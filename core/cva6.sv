@@ -1284,7 +1284,7 @@ module cva6
   dcache_req_o_t [NumPorts-1:0] dcache_req_from_cache;
 
   // D$ request
-  // Since ZCMT is only enable for embdeed class so MMU should be disable. 
+  // Since ZCMT is only enable for embdeed class so MMU should be disable.
   // Cache port 0 is being ultilize in implicit read access in ZCMT extension.
   if (CVA6Cfg.RVZCMT & ~(CVA6Cfg.MmuPresent)) begin
     assign dcache_req_to_cache[0] = dcache_req_ports_id_cache;
@@ -1371,6 +1371,8 @@ module cva6
       config_pkg::HPDCACHE_WB,
       config_pkg::HPDCACHE_WT_WB})
   begin : gen_cache_hpd
+    amo_req_t  amo_req_masked;
+    amo_resp_t amo_resp_precut;
     cva6_hpdcache_subsystem #(
         .CVA6Cfg   (CVA6Cfg),
         .icache_areq_t(icache_areq_t),
@@ -1408,8 +1410,8 @@ module cva6
         .dcache_flush_ack_o(dcache_flush_ack_cache_ctrl),
         .dcache_miss_o     (dcache_miss_cache_perf),
 
-        .dcache_amo_req_i (amo_req),
-        .dcache_amo_resp_o(amo_resp),
+        .dcache_amo_req_i (amo_req_masked),
+        .dcache_amo_resp_o(amo_resp_precut),
 
         .dcache_cmo_req_i ('0  /*FIXME*/),
         .dcache_cmo_resp_o(  /*FIXME*/),
@@ -1435,6 +1437,45 @@ module cva6
         .noc_resp_i(noc_resp_i)
     );
     assign inval_ready = 1'b1;
+
+    // Mask the amo_req.req when amo_resp.ack is asserted, because
+    // at the next cycle when the amo_resp_precut.ack is assert,
+    // the exe stage will get the ask from amo_resp and deassert
+    // the req at the next cycle
+    always_comb begin
+      amo_req_masked = amo_req;
+      amo_req_masked.req = amo_req.req & ~amo_resp.ack;
+    end
+
+    // a spill register for amo_resp, for timing optimization
+    spill_register #(
+        .T     (logic [$bits(amo_resp_precut.result)-1:0]),
+        .Bypass(0)
+    ) i_amo_resp_result (
+        .clk_i  (clk_i),
+        .rst_ni (rst_ni),
+        .valid_i(amo_resp_precut.ack),
+        .ready_o(),
+        .data_i (amo_resp_precut.result),
+        .valid_o(),
+        .ready_i(1'b1),
+        .data_o (amo_resp.result)
+    );
+
+    spill_register #(
+        .T     (logic),
+        .Bypass(0)
+    ) i_amo_resp_ack (
+        .clk_i  (clk_i),
+        .rst_ni (rst_ni),
+        .valid_i(1'b1),
+        .ready_o(),
+        .data_i (amo_resp_precut.ack),
+        .valid_o(),
+        .ready_i(1'b1),
+        .data_o (amo_resp.ack)
+    );
+
   end else begin : gen_cache_wb
     std_cache_subsystem #(
         // note: this only works with one cacheable region
