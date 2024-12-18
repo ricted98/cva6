@@ -97,6 +97,7 @@ ${CVA6_REPO_DIR}/vendor/pulp-platform/common_cells/src/shift_reg.sv
 ${CVA6_REPO_DIR}/vendor/pulp-platform/common_cells/src/unread.sv
 ${CVA6_REPO_DIR}/vendor/pulp-platform/common_cells/src/popcount.sv
 ${CVA6_REPO_DIR}/vendor/pulp-platform/common_cells/src/exp_backoff.sv
+${CVA6_REPO_DIR}/vendor/pulp-platform/common_cells/src/spill_register.sv
 
 // Common Cells for example coprocessor
 ${CVA6_REPO_DIR}/vendor/pulp-platform/common_cells/src/counter.sv
