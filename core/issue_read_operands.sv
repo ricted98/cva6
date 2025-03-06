@@ -136,6 +136,8 @@ module issue_read_operands
     logic none, load, store, alu, alu2, ctrl_flow, mult, csr, fpu, fpu_vec, cvxif, accel;
   } fus_busy_t;
 
+  typedef logic [CVA6Cfg.TRANS_ID_BITS:0] clobber_t;
+
   logic [CVA6Cfg.NrIssuePorts-1:0] stall_raw, stall_rs1, stall_rs2, stall_rs3;
   logic [CVA6Cfg.NrIssuePorts-1:0] fu_busy;  // functional unit is busy
   fus_busy_t [CVA6Cfg.NrIssuePorts-1:0] fus_busy;  // which functional units are considered busy
@@ -182,7 +184,7 @@ module issue_read_operands
   logic [CVA6Cfg.NrIssuePorts-1:0][CVA6Cfg.XLEN-1:0] rs3_res;
 
   // clobber
-  logic [2**ariane_pkg::REG_ADDR_SIZE-1:0][CVA6Cfg.TRANS_ID_BITS:0] rd_clobber_gpr, rd_clobber_fpr;
+  clobber_t [2**ariane_pkg::REG_ADDR_SIZE-1:0] rd_clobber_gpr, rd_clobber_fpr;
 
   // Csr issued check
   logic [CVA6Cfg.NR_SB_ENTRIES-1:0] csr_issued_raw;
@@ -427,8 +429,8 @@ module issue_read_operands
   assign still_issued_rotated = still_issued_rotated_raw[CVA6Cfg.NR_SB_ENTRIES-1:0];
 
   always_comb begin : clobber_assign
-    rd_clobber_gpr  = '{default: CVA6Cfg.NR_SB_ENTRIES};
-    rd_clobber_fpr  = '{default: CVA6Cfg.NR_SB_ENTRIES};
+    rd_clobber_gpr  = '{default: clobber_t'(CVA6Cfg.NR_SB_ENTRIES)};
+    rd_clobber_fpr  = '{default: clobber_t'(CVA6Cfg.NR_SB_ENTRIES)};
 
     // default (highest entry hast lowest prio in arbiter tree below)
     unrotated_index = '0;
@@ -436,15 +438,15 @@ module issue_read_operands
       unrotated_index = i + fwd_i.commit_pointer;
       if (still_issued_rotated[i]) begin
         if (~(CVA6Cfg.FpPresent && ariane_pkg::is_rd_fpr(fwd_i.sbe[unrotated_index].op))) begin
-          rd_clobber_gpr[fwd_i.sbe[unrotated_index].rd] = unrotated_index[CVA6Cfg.TRANS_ID_BITS-1:0];
+          rd_clobber_gpr[fwd_i.sbe[unrotated_index].rd] = clobber_t'(unrotated_index[CVA6Cfg.TRANS_ID_BITS-1:0]);
         end else begin
-          rd_clobber_fpr[fwd_i.sbe[unrotated_index].rd] = unrotated_index[CVA6Cfg.TRANS_ID_BITS-1:0];
+          rd_clobber_fpr[fwd_i.sbe[unrotated_index].rd] = clobber_t'(unrotated_index[CVA6Cfg.TRANS_ID_BITS-1:0]);
         end
       end
     end
 
     // GPR[0] is always free
-    rd_clobber_gpr[0] = CVA6Cfg.NR_SB_ENTRIES;
+    rd_clobber_gpr[0] = clobber_t'(CVA6Cfg.NR_SB_ENTRIES);
   end
 
   // ----------------------------------
@@ -456,19 +458,19 @@ module issue_read_operands
   for (genvar i = 0; i < CVA6Cfg.NrIssuePorts; i++) begin
     for (genvar k = 0; unsigned'(k) < CVA6Cfg.NrWbPorts; k++) begin : gen_rs_wb
 
-      assign rs1_fwd_req[i][k] = ((fwd_i.wb[k].trans_id == rd_clobber_gpr[issue_instr_i[i].rs1] && (!ariane_pkg::is_rs1_fpr(
+      assign rs1_fwd_req[i][k] = ((clobber_t'(fwd_i.wb[k].trans_id) == rd_clobber_gpr[issue_instr_i[i].rs1] && (!ariane_pkg::is_rs1_fpr(
           issue_instr_i[i].op
       ))) || (fwd_i.wb[k].trans_id == rd_clobber_fpr[issue_instr_i[i].rs1] &&
               (CVA6Cfg.FpPresent && ariane_pkg::is_rs1_fpr(
           issue_instr_i[i].op
       )))) & fwd_i.wb[k].valid & (~fwd_i.wb[k].ex_valid);
-      assign rs2_fwd_req[i][k] = ((fwd_i.wb[k].trans_id == rd_clobber_gpr[issue_instr_i[i].rs2] && (!ariane_pkg::is_rs2_fpr(
+      assign rs2_fwd_req[i][k] = ((clobber_t'(fwd_i.wb[k].trans_id) == rd_clobber_gpr[issue_instr_i[i].rs2] && (!ariane_pkg::is_rs2_fpr(
           issue_instr_i[i].op
       ))) || (fwd_i.wb[k].trans_id == rd_clobber_fpr[issue_instr_i[i].rs2] &&
               (CVA6Cfg.FpPresent && ariane_pkg::is_rs2_fpr(
           issue_instr_i[i].op
       )))) & fwd_i.wb[k].valid & (~fwd_i.wb[k].ex_valid);
-      assign rs3_fwd_req[i][k] = ((fwd_i.wb[k].trans_id == rd_clobber_gpr[issue_instr_i[i].result[ariane_pkg::REG_ADDR_SIZE-1:0]] && (!ariane_pkg::is_imm_fpr(
+      assign rs3_fwd_req[i][k] = ((clobber_t'(fwd_i.wb[k].trans_id) == rd_clobber_gpr[issue_instr_i[i].result[ariane_pkg::REG_ADDR_SIZE-1:0]] && (!ariane_pkg::is_imm_fpr(
           issue_instr_i[i].op
       ))) || (fwd_i.wb[k].trans_id ==
               rd_clobber_fpr[issue_instr_i[i].result[ariane_pkg::REG_ADDR_SIZE-1:0]] &&
@@ -480,22 +482,22 @@ module issue_read_operands
 
     for (genvar k = 0; unsigned'(k) < CVA6Cfg.NR_SB_ENTRIES; k++) begin : gen_rs_entries
 
-      assign rs1_fwd_req[i][k+CVA6Cfg.NrWbPorts] = ((rd_clobber_gpr[issue_instr_i[i].rs1] == k &&(!ariane_pkg::is_rs1_fpr(
+      assign rs1_fwd_req[i][k+CVA6Cfg.NrWbPorts] = ((rd_clobber_gpr[issue_instr_i[i].rs1] == clobber_t'(k) &&(!ariane_pkg::is_rs1_fpr(
           issue_instr_i[i].op
-      ))) || (rd_clobber_fpr[issue_instr_i[i].rs1] == k &&
+      ))) || (rd_clobber_fpr[issue_instr_i[i].rs1] == clobber_t'(k) &&
               (CVA6Cfg.FpPresent && ariane_pkg::is_rs1_fpr(
           issue_instr_i[i].op
       )))) & fwd_i.still_issued[k] & fwd_i.sbe[k].valid;
-      assign rs2_fwd_req[i][k+CVA6Cfg.NrWbPorts] = ((rd_clobber_gpr[issue_instr_i[i].rs2] == k && (!ariane_pkg::is_rs2_fpr(
+      assign rs2_fwd_req[i][k+CVA6Cfg.NrWbPorts] = ((rd_clobber_gpr[issue_instr_i[i].rs2] == clobber_t'(k) && (!ariane_pkg::is_rs2_fpr(
           issue_instr_i[i].op
-      ))) || (rd_clobber_fpr[issue_instr_i[i].rs2] == k &&
+      ))) || (rd_clobber_fpr[issue_instr_i[i].rs2] == clobber_t'(k) &&
               (CVA6Cfg.FpPresent && ariane_pkg::is_rs2_fpr(
           issue_instr_i[i].op
       )))) & fwd_i.still_issued[k] & fwd_i.sbe[k].valid;
-      assign rs3_fwd_req[i][k+CVA6Cfg.NrWbPorts] = ((rd_clobber_gpr[issue_instr_i[i].result[ariane_pkg::REG_ADDR_SIZE-1:0]] == k && (!ariane_pkg::is_imm_fpr(
+      assign rs3_fwd_req[i][k+CVA6Cfg.NrWbPorts] = ((rd_clobber_gpr[issue_instr_i[i].result[ariane_pkg::REG_ADDR_SIZE-1:0]] == clobber_t'(k) && (!ariane_pkg::is_imm_fpr(
           issue_instr_i[i].op
-      ))) || (rd_clobber_fpr[issue_instr_i[i].result[ariane_pkg::REG_ADDR_SIZE-1:0]] == k &&
-              (CVA6Cfg.FpPresent && ariane_pkg::is_imm_fpr(
+      ))) || (rd_clobber_fpr[issue_instr_i[i].result[ariane_pkg::REG_ADDR_SIZE-1:0]] ==
+              clobber_t'(k) && (CVA6Cfg.FpPresent && ariane_pkg::is_imm_fpr(
           issue_instr_i[i].op
       )))) & fwd_i.still_issued[k] & fwd_i.sbe[k].valid;
       assign rs_data[i][k+CVA6Cfg.NrWbPorts] = fwd_i.sbe[k].result;
@@ -569,8 +571,8 @@ module issue_read_operands
 
     assign rs1_has_raw[i] = !issue_instr_i[i].use_zimm && ((CVA6Cfg.FpPresent && is_rs1_fpr(
         issue_instr_i[i].op
-    )) ? rd_clobber_fpr[issue_instr_i[i].rs1] != CVA6Cfg.NR_SB_ENTRIES :
-        rd_clobber_gpr[issue_instr_i[i].rs1] != CVA6Cfg.NR_SB_ENTRIES);
+    )) ? rd_clobber_fpr[issue_instr_i[i].rs1] != clobber_t'(CVA6Cfg.NR_SB_ENTRIES) :
+        rd_clobber_gpr[issue_instr_i[i].rs1] != clobber_t'(CVA6Cfg.NR_SB_ENTRIES));
 
     assign rs1_valid[i] = rs1_available[i] && (CVA6Cfg.FpPresent && is_rs1_fpr(
         issue_instr_i[i].op
@@ -579,8 +581,8 @@ module issue_read_operands
 
     assign rs2_has_raw[i] = ((CVA6Cfg.FpPresent && is_rs2_fpr(
         issue_instr_i[i].op
-    )) ? rd_clobber_fpr[issue_instr_i[i].rs2] != CVA6Cfg.NR_SB_ENTRIES :
-        rd_clobber_gpr[issue_instr_i[i].rs2] != CVA6Cfg.NR_SB_ENTRIES);
+    )) ? rd_clobber_fpr[issue_instr_i[i].rs2] != clobber_t'(CVA6Cfg.NR_SB_ENTRIES) :
+        rd_clobber_gpr[issue_instr_i[i].rs2] != clobber_t'(CVA6Cfg.NR_SB_ENTRIES));
 
     assign rs2_valid[i] = rs2_available[i] && (CVA6Cfg.FpPresent && is_rs2_fpr(
         issue_instr_i[i].op
