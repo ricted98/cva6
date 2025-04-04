@@ -218,6 +218,7 @@ module cva6_hpdcache_subsystem
     userCfg.wbufWords = 1;
     userCfg.wbufTimecntWidth = 3;
     userCfg.rtabEntries = 4;
+    userCfg.cbufEntries = 4;
     /*FIXME we should add additional CVA6 config parameters (flushEntries)*/
     userCfg.flushEntries = CVA6Cfg.WtDcacheWbufDepth;
     /*FIXME we should add additional CVA6 config parameters (flushFifoDepth)*/
@@ -231,7 +232,9 @@ module cva6_hpdcache_subsystem
     userCfg.wbEn =
         (CVA6Cfg.DCacheType == config_pkg::HPDCACHE_WB) ||
         (CVA6Cfg.DCacheType == config_pkg::HPDCACHE_WT_WB);
+    userCfg.lowLatency = 1;
     return userCfg;
+
   endfunction
 
   localparam hpdcache_pkg::hpdcache_user_cfg_t HPDcacheUserCfg = hpdcacheSetConfig();
