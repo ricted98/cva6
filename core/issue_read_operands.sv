@@ -365,26 +365,35 @@ module issue_read_operands
           end
         end
         ALU: begin
-          if (CVA6Cfg.SuperscalarEn && !fus_busy[0].alu2) begin
+          // Port 0 is issuing an ALU operation
+          if (!fus_busy[0].alu2) begin
             // TODO is there a minimum float execution time?
             // If so we could issue FPU & ALU2 the same cycle
             fus_busy[1].fpu = 1'b1;
             fus_busy[1].fpu_vec = 1'b1;
+            // `alu2`-> Port 0
+            // `alu` -> Port 1
+            fus_busy[0].alu = 1'b1;
+            /*
             if (issue_instr_i[1].fu == CTRL_FLOW) begin
               // Control flow can use only `alu`
+              // Port 0 is going to use `alu2`
               // Port 1 is going to use `alu`
-              // Port 0 can use `alu2` for any other ALU operation
               fus_busy[0].alu = 1'b1;
             end else if (CVA6Cfg.ALUBypass && issue_instr_i[1].fu == ALU && issue_instr_valid_i[1] && !fus_busy[0].alu) begin
-              // Port 1 is going to use `alu2`
-              // This situation allows `alu` -> `alu2` bypass
-              fus_busy[0].alu2 = 1'b1;
+              // This situation allows `alu2` -> `alu` bypass
+              // Port 0 is going to use `alu2`
+              // Port 1 is going to use `alu`
+              fus_busy[0].alu = 1'b1;
             end else begin
               // No bypass is possible
               // Port 0 is going to use `alu2`
-              fus_busy[1].alu2 = 1'b1;
+              fus_busy[0].alu = 1'b1;
             end
+            */
           end else begin
+            // `alu2` is occupied
+            // Port 0 is going to use `alu`
             fus_busy[1].alu = 1'b1;
             fus_busy[1].ctrl_flow = 1'b1;
             fus_busy[1].csr = 1'b1;
