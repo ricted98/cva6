@@ -374,6 +374,7 @@ module issue_read_operands
             // `alu2`-> Port 0
             // `alu` -> Port 1
             fus_busy[0].alu = 1'b1;
+            fus_busy[1].alu2 = 1'b1;
             /*
             if (issue_instr_i[1].fu == CTRL_FLOW) begin
               // Control flow can use only `alu`
