@@ -549,7 +549,7 @@ module issue_read_operands
 
       if (issue_instr_i[0].fu == ALU && !(issue_instr_i[0].op inside {CPOP, CPOPW})) begin
         case (issue_instr_i[1].fu)
-          ALU:  is_alu_bypass = !(issue_instr_i[1].op inside {CPOP, CPOPW});
+          ALU: is_alu_bypass = !(issue_instr_i[1].op inside {CPOP, CPOPW});
           CTRL_FLOW: is_alu_bypass = issue_instr_i[1].op inside {LTS, LTU, GES, GEU, EQ, NE};
         endcase
       end
