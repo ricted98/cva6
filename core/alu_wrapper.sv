@@ -27,6 +27,7 @@ module alu_wrapper
 );
 
   logic [CVA6Cfg.NrALUs-1:0][CVA6Cfg.XLEN-1:0] result;
+  fu_data_t fu_data0;
 
   alu #(
       .CVA6Cfg  (CVA6Cfg),
@@ -35,23 +36,21 @@ module alu_wrapper
   ) alu_i (
       .clk_i           (clk_i),
       .rst_ni          (rst_ni),
-      .fu_data_i       (fu_data_i[0]),
+      .fu_data_i       (fu_data0),
       .result_o        (result[0]),
       .alu_branch_res_o(alu_branch_res_o)
   );
 
   if (CVA6Cfg.SuperscalarEn) begin : gen_alu2
 
-    fu_data_t fu_data;
-
     always_comb begin
-      fu_data = fu_data_i[1];
+      fu_data0 = fu_data_i[0];
 
       if (alu_bypass_i.rs1_from_rd) begin
-        fu_data.operand_a = result[0];
+        fu_data0.operand_a = result[1];
       end
       if (alu_bypass_i.rs2_from_rd) begin
-        fu_data.operand_b = result[0];
+        fu_data0.operand_b = result[1];
       end
     end
 
@@ -62,10 +61,12 @@ module alu_wrapper
     ) alu2_i (
         .clk_i           (clk_i),
         .rst_ni          (rst_ni),
-        .fu_data_i       (fu_data),
+        .fu_data_i       (fu_data_i[1]),
         .result_o        (result[1]),
         .alu_branch_res_o(  /* Unconnected */)
     );
+  end else begin : gen_no_alu2
+    assign fu_data0 = fu_data_i[0];
   end
 
   if (CVA6Cfg.ALUBypass && CVA6Cfg.RVZCB) begin : gen_standalone_bitman_cpop
