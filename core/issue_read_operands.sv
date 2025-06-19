@@ -542,10 +542,18 @@ module issue_read_operands
   // forward corresponding register
 
   if (CVA6Cfg.ALUBypass) begin
-    // If it is a ALU -> ALU, we can fuse all operation beside CPOP (maybe can be optimized OP -> CPOP, to explore)
-    assign is_alu_bypass =
-      (issue_instr_i[0].fu == ALU && issue_instr_i[1].fu == ALU) &&
-      !((issue_instr_i[0].op inside {CPOP, CPOPW}) || (issue_instr_i[1].op inside {CPOP, CPOPW}));
+    // ALU -> ALU: we can fuse all operation beside CPOP (maybe can be optimized OP -> CPOP, to explore)
+    // ALU -> CTRL_FLOW: we can fuse all BRANCH operations, JALR gets the register directly from fu_data instead
+    always_comb begin
+      is_alu_bypass = 1'b0;
+
+      if (issue_instr_i[0].fu == ALU && !(issue_instr_i[0].op inside {CPOP, CPOPW})) begin
+        case (issue_instr_i[1].fu)
+          ALU:  is_alu_bypass = !(issue_instr_i[1].op inside {CPOP, CPOPW});
+          CTRL_FLOW: is_alu_bypass = issue_instr_i[1].op inside {LTS, LTU, GES, GEU, EQ, NE};
+        endcase
+      end
+    end
   end else begin
     assign is_alu_bypass = 1'b0;
   end
