@@ -294,7 +294,6 @@ package ariane_pkg;
     NE,
     // jumps
     JALR,
-    BRANCH,
     // set lower than operations
     SLTS,
     SLTU,
