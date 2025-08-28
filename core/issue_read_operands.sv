@@ -313,8 +313,9 @@ module issue_read_operands
   end
 
   if (CVA6Cfg.SuperscalarEn) begin
-    // When a bypass is possible, an instruction uses `alu2` only when `alu` is already busy,
-    // in all other scenarios `alu2` is preferred over `alu`, unless it is busy
+    // When a bypass is possible or an FPU instruction is present on the second issue port,
+    // an instruction uses `alu2` only when `alu` is already busy
+    // In all other scenarios `alu2` is preferred over `alu`, unless it is busy
     for (genvar i = 0; i < 2; i++) begin
       assign use_alu2[i] = is_alu_bypass || (issue_instr_i[1].fu inside {FPU, FPU_VEC}) ? fus_busy[i].alu : !fus_busy[i].alu2;
     end
