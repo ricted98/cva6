@@ -1486,7 +1486,7 @@ module cva6
         .dcache_req_ports_o(dcache_req_from_cache),
         // write buffer status
         .wbuffer_empty_o   (dcache_wbuffer_empty_o),
-        .wbuffer_not_ni_o  (dcache_wbuffer_not_ni_i),
+        .wbuffer_not_ni_o  (dcache_wbuffer_not_ni_o),
         // memory side
         .noc_req_o         (noc_req_o),
         .noc_resp_i        (noc_resp_i),
@@ -1600,8 +1600,8 @@ module cva6
         .icache_dreq_o     (icache_dreq_cache_if),
         // D$
         .dcache_enable_i   (dcache_en_csr_nbdcache),
-        .dcache_flush_i    (dchache_flush_i),
-        .dcache_flush_ack_o(dcache_flush_o),
+        .dcache_flush_i    (dcache_flush_i),
+        .dcache_flush_ack_o(dcache_flush_ack_o),
         // to commit stage
         .amo_req_i         (dcache_amo_req_i),
         .amo_resp_o        (dcache_amo_resp_o),
