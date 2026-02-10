@@ -51,25 +51,25 @@ module cva6
 
     // cache request ports
     // I$ address translation requests
-    localparam type icache_areq_t = struct packed {
+    parameter type icache_areq_t = struct packed {
       logic                    fetch_valid;      // address translation valid
       logic [CVA6Cfg.PLEN-1:0] fetch_paddr;      // physical address in
       exception_t              fetch_exception;  // exception occurred during fetch
     },
-    localparam type icache_arsp_t = struct packed {
+    parameter type icache_arsp_t = struct packed {
       logic                    fetch_req;    // address translation request
       logic [CVA6Cfg.VLEN-1:0] fetch_vaddr;  // virtual address out
     },
 
     // I$ data requests
-    localparam type icache_dreq_t = struct packed {
+    parameter type icache_dreq_t = struct packed {
       logic                    req;      // we request a new word
       logic                    kill_s1;  // kill the current request
       logic                    kill_s2;  // kill the last request
       logic                    spec;     // request is speculative
       logic [CVA6Cfg.VLEN-1:0] vaddr;    // 1st cycle: 12 bit index is taken for lookup
     },
-    localparam type icache_drsp_t = struct packed {
+    parameter type icache_drsp_t = struct packed {
       logic                                ready;  // icache is ready
       logic                                valid;  // signals a valid read
       logic [CVA6Cfg.FETCH_WIDTH-1:0]      data;   // 2+ cycle out: tag
@@ -198,7 +198,7 @@ module cva6
     },
 
     // D$ data requests
-    localparam type dcache_req_i_t = struct packed {
+    parameter type dcache_req_i_t = struct packed {
       logic [CVA6Cfg.DCACHE_INDEX_WIDTH-1:0] address_index;
       logic [CVA6Cfg.DCACHE_TAG_WIDTH-1:0]   address_tag;
       logic [CVA6Cfg.XLEN-1:0]               data_wdata;
@@ -213,13 +213,15 @@ module cva6
       cbo_t                                  cbo_op;
     },
 
-    localparam type dcache_req_o_t = struct packed {
+    parameter type dcache_req_o_t = struct packed {
       logic                                 data_gnt;
       logic                                 data_rvalid;
       logic [CVA6Cfg.DcacheIdWidth-1:0]     data_rid;
       logic [CVA6Cfg.XLEN-1:0]              data_rdata;
       logic [CVA6Cfg.DCACHE_USER_WIDTH-1:0] data_ruser;
     },
+
+    parameter int unsigned NumPorts = 4,
 
     // Accelerator - CVA6
     parameter type accelerator_req_t  = logic,
@@ -318,6 +320,8 @@ module cva6
     input logic clk_i,
     // Asynchronous reset active low - SUBSYSTEM
     input logic rst_ni,
+    // Synchronous clear active high
+    input logic clear_i,
     // Reset boot address - SUBSYSTEM
     input logic [CVA6Cfg.VLEN-1:0] boot_addr_i,
     // Hard ID reflected as CSR - SUBSYSTEM
@@ -339,7 +343,43 @@ module cva6
     // noc request, can be AXI or OpenPiton - SUBSYSTEM
     output noc_req_t noc_req_o,
     // noc response, can be AXI or OpenPiton - SUBSYSTEM
-    input noc_resp_t noc_resp_i
+    input noc_resp_t noc_resp_i,
+
+    // HMR unit internal signal extraction
+    // D-Cache, requests to cache
+    input dcache_req_i_t [NumPorts-1:0] dcache_req_to_cache_i,
+    output dcache_req_i_t [NumPorts-1:0] dcache_req_to_cache_o,
+    // D-cache, requests/response from cache
+    input dcache_req_o_t [NumPorts-1:0] dcache_req_from_cache_i,
+    output dcache_req_o_t [NumPorts-1:0] dcache_req_from_cache_o,
+    // D-cache wbuffer signals
+    input logic dcache_wbuffer_empty_i,
+    output logic dcache_wbuffer_empty_o,
+    input logic dcache_wbuffer_not_ni_i,
+    output logic dcache_wbuffer_not_ni_o,
+    // AMO signals
+    input ariane_pkg::amo_req_t dcache_amo_req_i,
+    output ariane_pkg::amo_req_t dcache_amo_req_o,
+    input ariane_pkg::amo_resp_t dcache_amo_resp_i,
+    output ariane_pkg::amo_resp_t dcache_amo_resp_o,
+    // Data cache flush signals
+    input logic dcache_flush_i,
+    output logic dcache_flush_o,
+    input logic dcache_flush_ack_i,
+    output logic dcache_flush_ack_o,
+
+    // I-cache, address resolve response from MMU
+    input  icache_areq_t icache_areq_ex_cache_i,
+    output icache_areq_t icache_areq_ex_cache_o,
+    // I-cache, address resolve request to MMU
+    input  icache_arsp_t icache_areq_cache_ex_i,
+    output icache_arsp_t icache_areq_cache_ex_o,
+    // I-cache, data request from fetch stage
+    input  icache_dreq_t icache_dreq_if_cache_i,
+    output icache_dreq_t icache_dreq_if_cache_o,
+    // I-cache, data response to fetch stage
+    input  icache_drsp_t icache_dreq_cache_if_i,
+    output icache_drsp_t icache_dreq_cache_if_o
 );
 
   localparam type interrupts_t = struct packed {
@@ -381,8 +421,6 @@ module cva6
   logic [CVA6Cfg.NrCommitPorts-1:0] commit_ack;
   logic [CVA6Cfg.NrCommitPorts-1:0] commit_macro_ack;
   logic mbe;  // determines the data endian-ness of the processor
-
-  localparam NumPorts = 4;
 
   // CVXIF
   cvxif_req_t cvxif_req;
@@ -701,7 +739,7 @@ module cva6
       .set_debug_pc_i     (set_debug_pc),
       .debug_mode_i       (debug_mode),
       .icache_dreq_o      (icache_dreq_if_cache),
-      .icache_dreq_i      (icache_dreq_cache_if),
+      .icache_dreq_i      (icache_dreq_cache_if_i),
       .fetch_entry_o      (fetch_entry_if_id),
       .fetch_entry_valid_o(fetch_valid_if_id),
       .fetch_entry_ready_i(fetch_ready_id_if)
@@ -1042,8 +1080,8 @@ module cva6
       // ALU2
       .alu2_valid_i            (alu2_valid_id_ex),
       .amo_valid_commit_i      (amo_valid_commit),
-      .amo_req_o               (amo_req),
-      .amo_resp_i              (amo_resp),
+      .amo_req_o               (dcache_amo_req_o),
+      .amo_resp_i              (dcache_amo_resp_i),
       // CoreV-X-Interface
       .x_valid_i               (x_issue_valid_id_ex),
       .x_ready_o               (x_issue_ready_ex_id),
@@ -1089,7 +1127,7 @@ module cva6
       .vs_asid_i               (vs_asid_csr_ex),                 // from CSR
       .hgatp_ppn_i             (hgatp_ppn_csr_ex),               // from CSR
       .vmid_i                  (vmid_csr_ex),                    // from CSR
-      .icache_areq_i           (icache_areq_cache_ex),
+      .icache_areq_i           (icache_areq_cache_ex_i),
       .icache_areq_o           (icache_areq_ex_cache),
       // DCACHE interfaces
       .dcache_req_ports_i      (dcache_req_ports_cache_ex),
@@ -1120,7 +1158,7 @@ module cva6
       .clk_i,
       .rst_ni,
       .halt_i              (halt_ctrl),
-      .flush_dcache_i      (dcache_flush_ctrl_cache),
+      .flush_dcache_i      (dcache_flush_i),
       .exception_o         (ex_commit),
       .dirty_fp_state_o    (dirty_fp_state),
       .single_step_i       (single_step_csr_commit || single_step_acc_commit),
@@ -1132,7 +1170,7 @@ module cva6
       .wdata_o             (wdata_commit_id),
       .we_gpr_o            (we_gpr_commit_id),
       .we_fpr_o            (we_fpr_commit_id),
-      .amo_resp_i          (amo_resp),
+      .amo_resp_i          (dcache_amo_resp_i),
       .pc_o                (pc_commit),
       .csr_op_o            (csr_op_commit_csr),
       .csr_wdata_o         (csr_wdata_commit_csr),
@@ -1293,7 +1331,7 @@ module cva6
         .eret_i             (eret),
         .resolved_branch_i  (resolved_branch),
         .branch_exceptions_i(flu_exception_ex_id),
-        .l1_icache_access_i (icache_dreq_if_cache),
+        .l1_icache_access_i (icache_dreq_if_cache_i),
         .l1_dcache_access_i (dcache_req_ports_ex_cache),
         .miss_vld_bits_i    (miss_vld_bits),
         .i_tlb_flush_i      (flush_tlb_ctrl_ex),
@@ -1324,8 +1362,8 @@ module cva6
       .flush_ex_o            (flush_ctrl_ex),
       .flush_bp_o            (flush_ctrl_bp),
       .flush_icache_o        (icache_flush_ctrl_cache),
-      .flush_dcache_o        (dcache_flush_ctrl_cache),
-      .flush_dcache_ack_i    (dcache_flush_ack_cache_ctrl),
+      .flush_dcache_o        (dcache_flush_o),
+      .flush_dcache_ack_i    (dcache_flush_ack_i),
       .flush_tlb_o           (flush_tlb_ctrl_ex),
       .flush_tlb_vvma_o      (flush_tlb_vvma_ctrl_ex),
       .flush_tlb_gvma_o      (flush_tlb_gvma_ctrl_ex),
@@ -1369,27 +1407,42 @@ module cva6
   assign dcache_req_to_cache[2] = dcache_req_ports_acc_cache[0];
   assign dcache_req_to_cache[3] = dcache_req_ports_ex_cache[2].data_req ? dcache_req_ports_ex_cache [2] :
                                                                           dcache_req_ports_acc_cache[1];
+  // Output request signal to HMR unit
+  assign dcache_req_to_cache_o = dcache_req_to_cache;
 
   // D$ response
   // Since ZCMT is only enabled for embedded class so MMU should be disabled.
   // Cache port 0 is being utilized in implicit read access in ZCMT extension.
   if (CVA6Cfg.RVZCMT & ~(CVA6Cfg.MmuPresent)) begin
-    assign dcache_req_ports_cache_id = dcache_req_from_cache[0];
+    assign dcache_req_ports_cache_id = dcache_req_from_cache_i[0];
     assign dcache_req_ports_cache_ex[0] = '0;
   end else begin
-    assign dcache_req_ports_cache_ex[0] = dcache_req_from_cache[0];
+    assign dcache_req_ports_cache_ex[0] = dcache_req_from_cache_i[0];
     assign dcache_req_ports_cache_id = '0;
   end
-  assign dcache_req_ports_cache_ex[1]  = dcache_req_from_cache[1];
-  assign dcache_req_ports_cache_acc[0] = dcache_req_from_cache[2];
+  assign dcache_req_ports_cache_ex[1] = dcache_req_from_cache_i[1];
+
   always_comb begin : gen_dcache_req_store_data_gnt
-    dcache_req_ports_cache_ex[2]  = dcache_req_from_cache[3];
-    dcache_req_ports_cache_acc[1] = dcache_req_from_cache[3];
+    dcache_req_ports_cache_ex[2]  = dcache_req_from_cache_i[3];
+    dcache_req_ports_cache_acc[1] = dcache_req_from_cache_i[3];
 
     // Set gnt signal
     dcache_req_ports_cache_ex[2].data_gnt &= dcache_req_ports_ex_cache[2].data_req;
     dcache_req_ports_cache_acc[1].data_gnt &= !dcache_req_ports_ex_cache[2].data_req;
   end
+
+  // Output response signal to HMR unit
+  assign dcache_req_from_cache_o = dcache_req_from_cache;
+
+  // HMR signal routing for I-cache
+  assign icache_areq_ex_cache_o = icache_areq_ex_cache;
+  assign icache_areq_cache_ex_o = icache_areq_cache_ex;
+  assign icache_dreq_if_cache_o = icache_dreq_if_cache;
+  assign icache_dreq_cache_if_o = icache_dreq_cache_if;
+
+  // HMR wbuffer signal extraction
+  assign dcache_commit_wbuffer_empty = dcache_wbuffer_empty_i;
+  assign dcache_commit_wbuffer_not_ni = dcache_wbuffer_not_ni_i;
 
   if (CVA6Cfg.DCacheType == config_pkg::WT) begin : gen_cache_wt
     // this is a cache subsystem that is compatible with OpenPiton
@@ -1414,26 +1467,26 @@ module cva6
         .icache_en_i       (icache_en_csr),
         .icache_flush_i    (icache_flush_ctrl_cache),
         .icache_miss_o     (icache_miss_cache_perf),
-        .icache_areq_i     (icache_areq_ex_cache),
+        .icache_areq_i     (icache_areq_ex_cache_i),
         .icache_areq_o     (icache_areq_cache_ex),
-        .icache_dreq_i     (icache_dreq_if_cache),
+        .icache_dreq_i     (icache_dreq_if_cache_i),
         .icache_dreq_o     (icache_dreq_cache_if),
         // D$
         .dcache_enable_i   (dcache_en_csr_nbdcache),
-        .dcache_flush_i    (dcache_flush_ctrl_cache),
-        .dcache_flush_ack_o(dcache_flush_ack_cache_ctrl),
+        .dcache_flush_i    (dcache_flush_i),
+        .dcache_flush_ack_o(dcache_flush_ack_o),
         // to commit stage
-        .dcache_amo_req_i  (amo_req),
-        .dcache_amo_resp_o (amo_resp),
+        .dcache_amo_req_i  (dcache_amo_req_i),
+        .dcache_amo_resp_o (dcache_amo_resp_o),
         .mbe_i             (mbe),
         // from PTW, Load Unit  and Store Unit
         .dcache_miss_o     (dcache_miss_cache_perf),
         .miss_vld_bits_o   (miss_vld_bits),
-        .dcache_req_ports_i(dcache_req_to_cache),
+        .dcache_req_ports_i(dcache_req_to_cache_i),
         .dcache_req_ports_o(dcache_req_from_cache),
         // write buffer status
-        .wbuffer_empty_o   (dcache_commit_wbuffer_empty),
-        .wbuffer_not_ni_o  (dcache_commit_wbuffer_not_ni),
+        .wbuffer_empty_o   (dcache_wbuffer_empty_o),
+        .wbuffer_not_ni_o  (dcache_wbuffer_not_ni_i),
         // memory side
         .noc_req_o         (noc_req_o),
         .noc_resp_i        (noc_resp_i),
@@ -1474,27 +1527,27 @@ module cva6
         .icache_en_i   (icache_en_csr),
         .icache_flush_i(icache_flush_ctrl_cache),
         .icache_miss_o (icache_miss_cache_perf),
-        .icache_areq_i (icache_areq_ex_cache),
+        .icache_areq_i (icache_areq_ex_cache_i),
         .icache_areq_o (icache_areq_cache_ex),
         .icache_dreq_i (icache_dreq_if_cache),
         .icache_dreq_o (icache_dreq_cache_if),
 
         .dcache_enable_i   (dcache_en_csr_nbdcache),
-        .dcache_flush_i    (dcache_flush_ctrl_cache),
-        .dcache_flush_ack_o(dcache_flush_ack_cache_ctrl),
+        .dcache_flush_i    (dcache_flush_i),
+        .dcache_flush_ack_o(dcache_flush_ack_o),
         .dcache_miss_o     (dcache_miss_cache_perf),
 
-        .dcache_amo_req_i (amo_req),
-        .dcache_amo_resp_o(amo_resp),
+        .dcache_amo_req_i (dcache_amo_req_i),
+        .dcache_amo_resp_o(dcache_amo_resp_o),
 
         .dcache_cmo_req_i ('0  /*FIXME*/),
         .dcache_cmo_resp_o(  /*FIXME*/),
 
-        .dcache_req_ports_i(dcache_req_to_cache),
+        .dcache_req_ports_i(dcache_req_to_cache_i),
         .dcache_req_ports_o(dcache_req_from_cache),
 
-        .wbuffer_empty_o (dcache_commit_wbuffer_empty),
-        .wbuffer_not_ni_o(dcache_commit_wbuffer_not_ni),
+        .wbuffer_empty_o (dcache_wbuffer_empty_o),
+        .wbuffer_not_ni_o(dcache_wbuffer_not_ni_o),
 
         .hwpf_base_set_i    ('0  /*FIXME*/),
         .hwpf_base_i        ('0  /*FIXME*/),
@@ -1541,30 +1594,30 @@ module cva6
         .icache_en_i       (icache_en_csr),
         .icache_flush_i    (icache_flush_ctrl_cache),
         .icache_miss_o     (icache_miss_cache_perf),
-        .icache_areq_i     (icache_areq_ex_cache),
+        .icache_areq_i     (icache_areq_ex_cache_i),
         .icache_areq_o     (icache_areq_cache_ex),
-        .icache_dreq_i     (icache_dreq_if_cache),
+        .icache_dreq_i     (icache_dreq_if_cache_i),
         .icache_dreq_o     (icache_dreq_cache_if),
         // D$
         .dcache_enable_i   (dcache_en_csr_nbdcache),
-        .dcache_flush_i    (dcache_flush_ctrl_cache),
-        .dcache_flush_ack_o(dcache_flush_ack_cache_ctrl),
+        .dcache_flush_i    (dchache_flush_i),
+        .dcache_flush_ack_o(dcache_flush_o),
         // to commit stage
-        .amo_req_i         (amo_req),
-        .amo_resp_o        (amo_resp),
+        .amo_req_i         (dcache_amo_req_i),
+        .amo_resp_o        (dcache_amo_resp_o),
         .dcache_miss_o     (dcache_miss_cache_perf),
         // this is statically set to 1 as the std_cache does not have a wbuffer
-        .wbuffer_empty_o   (dcache_commit_wbuffer_empty),
+        .wbuffer_empty_o   (dcache_wbuffer_empty_o),
         // from PTW, Load Unit  and Store Unit
-        .dcache_req_ports_i(dcache_req_to_cache),
+        .dcache_req_ports_i(dcache_req_to_cache_i),
         .dcache_req_ports_o(dcache_req_from_cache),
         // memory side
         .axi_req_o         (noc_req_o),
         .axi_resp_i        (noc_resp_i)
     );
-    assign dcache_commit_wbuffer_not_ni = 1'b1;
-    assign inval_ready                  = 1'b1;
-    assign miss_vld_bits                = '0;
+    assign dcache_wbuffer_not_ni_o = 1'b1;
+    assign inval_ready             = 1'b1;
+    assign miss_vld_bits           = '0;
   end
 
   // ----------------
