@@ -64,6 +64,7 @@ core/alu_wrapper.sv
 core/fpu_wrap.sv
 corev_apu/src/ariane.sv
 core/cva6.sv
+core/cva6_top.sv
 core/branch_unit.sv
 core/compressed_decoder.sv
 core/controller.sv
