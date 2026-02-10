@@ -13,7 +13,7 @@ module cva6_top
   import ariane_pkg::*;
 #(
     // Number of cores
-    parameter logic [1:0] NumCores = 2'd2,
+    parameter logic [1:0] NumCores = 2'd1,
 
     // CVA6 config
     parameter config_pkg::cva6_cfg_t CVA6Cfg = build_config_pkg::build_config(
@@ -384,73 +384,95 @@ module cva6_top
     );
   end
 
-  hmr_unit #(
-      // CVA6 config
-      .CVA6Cfg(CVA6Cfg),
-      // Number of dcache ports
-      .NumPorts(NumPorts),
-      // General core inputs wrapping struct
-      .all_inputs_t(cva6_inputs_t),
-      // General core outputs wrapping struct
-      .nominal_outputs_t(cva6_outputs_t),
-      // Bus outputs wrapping struct (requires SeparateData)
-      .bus_outputs_t(noc_req_t),
-      .bus_inputs_t(noc_resp_t),
-      // Type for requests to data cache
-      .dcache_req_t(dcache_req_i_t),
-      // Type for response from data cache
-      .dcache_rsp_t(dcache_req_o_t),
-      // Type for areq to instruction cache
-      .icache_areq_t(icache_areq_t),
-      .icache_arsp_t(icache_arsp_t),
-      .icache_dreq_t(icache_dreq_t),
-      .icache_drsp_t(icache_drsp_t)
-  ) i_relcva6_hmr (
-      .clk_i(clk_i),
-      .rst_ni(rst_ni),
-      // 1: dmr mode, 0: independent mode
-      .dmr_mode_active_i(dmr_mode_active_i),
-      // DMR signals
-      // Indicates if the DMR group has multiple mismatches
-      .dmr_failure_o(dmr_failure_o),
-      // Signals between HMR unit and system
-      .sys_inputs_i(sys2hmr),
-      .sys_nominal_outputs_o(hmr2sys),
-      .sys_bus_outputs_o(noc_req_hmr2sys),
-      .sys_bus_inputs_i(noc_resp_sys2hmr),
-      // Signal between HMR unit and core
-      .core_inputs_o(hmr2core),
-      .core_nominal_outputs_i(core2hmr),
-      .core_bus_outputs_i(noc_req_core2hmr),
-      .core_bus_inputs_o(noc_resp_hmr2core),
-      // Signals between HMR unit and data cache
-      .dcache_req_core2hmr_i(dcache_req_core2hmr[NumCores-1:0]),
-      .dcache_req_hmr2core_o(dcache_req_hmr2core[NumCores-1:0]),
-      .dcache_rsp_core2hmr_i(dcache_rsp_core2hmr[NumCores-1:0]),
-      .dcache_rsp_hmr2core_o(dcache_rsp_hmr2core[NumCores-1:0]),
-      // Data cache write buffer signals
-      .dcache_wbuffer_empty_core2hmr_i(wbuffer_empty_core2hmr),
-      .dcache_wbuffer_empty_hmr2core_o(wbuffer_empty_hmr2core),
-      .dcache_wbuffer_not_ni_core2hmr_i(wbuffer_not_ni_core2hmr),
-      .dcache_wbuffer_not_ni_hmr2core_o(wbuffer_not_ni_hmr2core),
-      // AMO signals
-      .dcache_amo_req_core2hmr_i(dcache_amo_req_core2hmr),
-      .dcache_amo_req_hmr2core_o(dcache_amo_req_hmr2core),
-      .dcache_amo_resp_core2hmr_i(dcache_amo_resp_core2hmr),
-      .dcache_amo_resp_hmr2core_o(dcache_amo_resp_hmr2core),
-      // D-cache flush signals
-      .dcache_flush_core2hmr_i(dcache_flush_core2hmr),
-      .dcache_flush_hmr2core_o(dcache_flush_hmr2core),
-      .dcache_flush_ack_core2hmr_i(dcache_flush_ack_core2hmr),
-      .dcache_flush_ack_hmr2core_o(dcache_flush_ack_hmr2core),
-      // Signals between HMR unit and instruction cache
-      .icache_areq_core2hmr_i(icache_areq_core2hmr),
-      .icache_areq_hmr2core_o(icache_areq_hmr2core),
-      .icache_arsp_core2hmr_i(icache_arsp_core2hmr),
-      .icache_arsp_hmr2core_o(icache_arsp_hmr2core),
-      .icache_dreq_core2hmr_i(icache_dreq_core2hmr),
-      .icache_dreq_hmr2core_o(icache_dreq_hmr2core),
-      .icache_drsp_core2hmr_i(icache_drsp_core2hmr),
-      .icache_drsp_hmr2core_o(icache_drsp_hmr2core)
-  );
+  if (NumCores == 1) begin : gen_single_core
+    assign dmr_failure_o = 1'b0;
+    assign hmr2sys = core2hmr;
+    assign noc_req_hmr2sys = noc_req_core2hmr;
+    assign hmr2core = sys2hmr;
+    assign noc_resp_hmr2core = noc_resp_sys2hmr;
+    assign dcache_req_hmr2core = dcache_req_core2hmr;
+    assign dcache_rsp_hmr2core = dcache_rsp_core2hmr;
+    assign wbuffer_empty_hmr2core = wbuffer_empty_core2hmr;
+    assign wbuffer_not_ni_hmr2core = wbuffer_not_ni_core2hmr;
+    assign dcache_amo_req_hmr2core = dcache_amo_req_core2hmr;
+    assign dcache_amo_resp_hmr2core = dcache_amo_resp_core2hmr;
+    assign dcache_flush_hmr2core = dcache_flush_core2hmr;
+    assign dcache_flush_ack_hmr2core = dcache_flush_ack_core2hmr;
+    assign icache_areq_hmr2core = icache_areq_core2hmr;
+    assign icache_arsp_hmr2core = icache_arsp_core2hmr;
+    assign icache_dreq_hmr2core = icache_dreq_core2hmr;
+    assign icache_drsp_hmr2core = icache_drsp_core2hmr;
+  end else if (NumCores == 2) begin : gen_hmr
+    hmr_unit #(
+        // CVA6 config
+        .CVA6Cfg(CVA6Cfg),
+        // Number of dcache ports
+        .NumPorts(NumPorts),
+        // General core inputs wrapping struct
+        .all_inputs_t(cva6_inputs_t),
+        // General core outputs wrapping struct
+        .nominal_outputs_t(cva6_outputs_t),
+        // Bus outputs wrapping struct (requires SeparateData)
+        .bus_outputs_t(noc_req_t),
+        .bus_inputs_t(noc_resp_t),
+        // Type for requests to data cache
+        .dcache_req_t(dcache_req_i_t),
+        // Type for response from data cache
+        .dcache_rsp_t(dcache_req_o_t),
+        // Type for areq to instruction cache
+        .icache_areq_t(icache_areq_t),
+        .icache_arsp_t(icache_arsp_t),
+        .icache_dreq_t(icache_dreq_t),
+        .icache_drsp_t(icache_drsp_t)
+    ) i_relcva6_hmr (
+        .clk_i(clk_i),
+        .rst_ni(rst_ni),
+        // 1: dmr mode, 0: independent mode
+        .dmr_mode_active_i(dmr_mode_active_i),
+        // DMR signals
+        // Indicates if the DMR group has multiple mismatches
+        .dmr_failure_o(dmr_failure_o),
+        // Signals between HMR unit and system
+        .sys_inputs_i(sys2hmr),
+        .sys_nominal_outputs_o(hmr2sys),
+        .sys_bus_outputs_o(noc_req_hmr2sys),
+        .sys_bus_inputs_i(noc_resp_sys2hmr),
+        // Signal between HMR unit and core
+        .core_inputs_o(hmr2core),
+        .core_nominal_outputs_i(core2hmr),
+        .core_bus_outputs_i(noc_req_core2hmr),
+        .core_bus_inputs_o(noc_resp_hmr2core),
+        // Signals between HMR unit and data cache
+        .dcache_req_core2hmr_i(dcache_req_core2hmr[NumCores-1:0]),
+        .dcache_req_hmr2core_o(dcache_req_hmr2core[NumCores-1:0]),
+        .dcache_rsp_core2hmr_i(dcache_rsp_core2hmr[NumCores-1:0]),
+        .dcache_rsp_hmr2core_o(dcache_rsp_hmr2core[NumCores-1:0]),
+        // Data cache write buffer signals
+        .dcache_wbuffer_empty_core2hmr_i(wbuffer_empty_core2hmr),
+        .dcache_wbuffer_empty_hmr2core_o(wbuffer_empty_hmr2core),
+        .dcache_wbuffer_not_ni_core2hmr_i(wbuffer_not_ni_core2hmr),
+        .dcache_wbuffer_not_ni_hmr2core_o(wbuffer_not_ni_hmr2core),
+        // AMO signals
+        .dcache_amo_req_core2hmr_i(dcache_amo_req_core2hmr),
+        .dcache_amo_req_hmr2core_o(dcache_amo_req_hmr2core),
+        .dcache_amo_resp_core2hmr_i(dcache_amo_resp_core2hmr),
+        .dcache_amo_resp_hmr2core_o(dcache_amo_resp_hmr2core),
+        // D-cache flush signals
+        .dcache_flush_core2hmr_i(dcache_flush_core2hmr),
+        .dcache_flush_hmr2core_o(dcache_flush_hmr2core),
+        .dcache_flush_ack_core2hmr_i(dcache_flush_ack_core2hmr),
+        .dcache_flush_ack_hmr2core_o(dcache_flush_ack_hmr2core),
+        // Signals between HMR unit and instruction cache
+        .icache_areq_core2hmr_i(icache_areq_core2hmr),
+        .icache_areq_hmr2core_o(icache_areq_hmr2core),
+        .icache_arsp_core2hmr_i(icache_arsp_core2hmr),
+        .icache_arsp_hmr2core_o(icache_arsp_hmr2core),
+        .icache_dreq_core2hmr_i(icache_dreq_core2hmr),
+        .icache_dreq_hmr2core_o(icache_dreq_hmr2core),
+        .icache_drsp_core2hmr_i(icache_drsp_core2hmr),
+        .icache_drsp_hmr2core_o(icache_drsp_hmr2core)
+    );
+  end else begin
+    $error("Unsupported number of cores.");
+  end
 endmodule
