@@ -111,6 +111,7 @@ sources:
       - core/cva6_fifo_v3.sv
       # Top-level source files (not necessarily instantiated at the top of the cva6).
       - core/cva6.sv
+      - core/cva6_top.sv
       - core/aes.sv
       - core/alu.sv
       - core/alu_wrapper.sv
@@ -223,6 +224,9 @@ sources:
       - core/cache_subsystem/hpdcache/rtl/src/common/macros/behav/hpdcache_sram_1rw.sv
       - core/cache_subsystem/hpdcache/rtl/src/common/macros/behav/hpdcache_sram_wbyteenable_1rw.sv
       - core/cache_subsystem/hpdcache/rtl/src/common/macros/behav/hpdcache_sram_wmask_1rw.sv
+      # HMR
+      - core/hmr/dmr_checker.sv
+      - core/hmr/hmr_unit.sv
 
       # Physical Memory Protection
       - core/pmp/src/pmp.sv
