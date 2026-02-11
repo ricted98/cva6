@@ -65,6 +65,8 @@ core/fpu_wrap.sv
 corev_apu/src/ariane.sv
 core/cva6.sv
 core/cva6_top.sv
+core/hmr/dmr_checker.sv
+core/hmr/hmr_unit.sv
 core/branch_unit.sv
 core/compressed_decoder.sv
 core/controller.sv
