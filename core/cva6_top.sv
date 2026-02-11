@@ -424,7 +424,7 @@ module cva6_top
         .icache_arsp_t(icache_arsp_t),
         .icache_dreq_t(icache_dreq_t),
         .icache_drsp_t(icache_drsp_t)
-    ) i_relcva6_hmr (
+    ) i_hmr_unit (
         .clk_i(clk_i),
         .rst_ni(rst_ni),
         // 1: dmr mode, 0: independent mode
