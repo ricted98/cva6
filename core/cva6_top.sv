@@ -12,8 +12,12 @@
 module cva6_top
   import ariane_pkg::*;
 #(
-    // Number of cores
-    parameter logic [1:0] NumCores = 2'd1,
+    // Top configurations
+    parameter bit EnableDMR = 1'b1,
+    parameter bit EnableHMR = 1'b0,
+
+    localparam int unsigned NumPhysicalCores = EnableDMR ? 2 : 1,
+    localparam int unsigned NumLogicalCores  = EnableHMR ? NumPhysicalCores : 1,
 
     // CVA6 config
     parameter config_pkg::cva6_cfg_t CVA6Cfg = build_config_pkg::build_config(
@@ -201,25 +205,25 @@ module cva6_top
     // Reset boot address - SUBSYSTEM
     input logic [CVA6Cfg.VLEN-1:0] boot_addr_i,
     // Hard ID reflected as CSR - SUBSYSTEM
-    input logic [NumCores-1:0][CVA6Cfg.XLEN-1:0] hart_id_i,
+    input logic [NumLogicalCores-1:0][CVA6Cfg.XLEN-1:0] hart_id_i,
     // Level sensitive (async) interrupts - SUBSYSTEM
-    input logic [NumCores-1:0][1:0] irq_i,
+    input logic [NumLogicalCores-1:0][1:0] irq_i,
     // Inter-processor (async) interrupt - SUBSYSTEM
-    input logic [NumCores-1:0] ipi_i,
+    input logic [NumLogicalCores-1:0] ipi_i,
     // Timer (async) interrupt - SUBSYSTEM
-    input logic [NumCores-1:0] time_irq_i,
+    input logic [NumLogicalCores-1:0] time_irq_i,
     // Debug (async) request - SUBSYSTEM
-    input logic [NumCores-1:0] debug_req_i,
+    input logic [NumLogicalCores-1:0] debug_req_i,
     // Probes to build RVFI, can be left open when not used - RVFI
-    output rvfi_probes_t [NumCores-1:0] rvfi_probes_o,
+    output rvfi_probes_t [NumPhysicalCores-1:0] rvfi_probes_o,
     // CVXIF request - SUBSYSTEM
-    output cvxif_req_t [NumCores-1:0] cvxif_req_o,
+    output cvxif_req_t [NumPhysicalCores-1:0] cvxif_req_o,
     // CVXIF response - SUBSYSTEM
-    input cvxif_resp_t [NumCores-1:0] cvxif_resp_i,
+    input cvxif_resp_t [NumPhysicalCores-1:0] cvxif_resp_i,
     // noc request, can be AXI or OpenPiton - SUBSYSTEM
-    output noc_req_t [NumCores-1:0] noc_req_o,
+    output noc_req_t [NumLogicalCores-1:0] noc_req_o,
     // noc response, can be AXI or OpenPiton - SUBSYSTEM
-    input noc_resp_t [NumCores-1:0] noc_resp_i
+    input noc_resp_t [NumLogicalCores-1:0] noc_resp_i
 );
 
   typedef struct packed {
@@ -234,41 +238,58 @@ module cva6_top
     logic tieoff;
   } cva6_outputs_t;
 
-  cva6_inputs_t [NumCores-1:0] sys2hmr, hmr2core;
-  cva6_outputs_t [NumCores-1:0] hmr2sys, core2hmr;
-  noc_req_t [NumCores-1:0] noc_req_core2hmr, noc_req_hmr2sys;
-  noc_resp_t [NumCores-1:0] noc_resp_sys2hmr, noc_resp_hmr2core;
-  dcache_req_i_t [NumCores-1:0][NumPorts-1:0] dcache_req_core2hmr, dcache_req_hmr2core;
-  dcache_req_o_t [NumCores-1:0][NumPorts-1:0] dcache_rsp_core2hmr, dcache_rsp_hmr2core;
-  icache_areq_t [NumCores-1:0] icache_areq_core2hmr, icache_areq_hmr2core;
-  icache_arsp_t [NumCores-1:0] icache_arsp_core2hmr, icache_arsp_hmr2core;
-  icache_dreq_t [NumCores-1:0] icache_dreq_core2hmr, icache_dreq_hmr2core;
-  icache_drsp_t [NumCores-1:0] icache_drsp_core2hmr, icache_drsp_hmr2core;
+  cva6_inputs_t [NumPhysicalCores-1:0] sys2hmr, hmr2core;
+  cva6_outputs_t [NumPhysicalCores-1:0] hmr2sys, core2hmr;
+  noc_req_t [NumPhysicalCores-1:0] noc_req_core2hmr, noc_req_hmr2sys;
+  noc_resp_t [NumPhysicalCores-1:0] noc_resp_sys2hmr, noc_resp_hmr2core;
+  dcache_req_i_t [NumPhysicalCores-1:0][NumPorts-1:0] dcache_req_core2hmr, dcache_req_hmr2core;
+  dcache_req_o_t [NumPhysicalCores-1:0][NumPorts-1:0] dcache_rsp_core2hmr, dcache_rsp_hmr2core;
+  icache_areq_t [NumPhysicalCores-1:0] icache_areq_core2hmr, icache_areq_hmr2core;
+  icache_arsp_t [NumPhysicalCores-1:0] icache_arsp_core2hmr, icache_arsp_hmr2core;
+  icache_dreq_t [NumPhysicalCores-1:0] icache_dreq_core2hmr, icache_dreq_hmr2core;
+  icache_drsp_t [NumPhysicalCores-1:0] icache_drsp_core2hmr, icache_drsp_hmr2core;
   // D-cache wbuffer signals
-  logic [NumCores-1:0] wbuffer_empty_core2hmr, wbuffer_empty_hmr2core;
-  logic [NumCores-1:0] wbuffer_not_ni_core2hmr, wbuffer_not_ni_hmr2core;
+  logic [NumPhysicalCores-1:0] wbuffer_empty_core2hmr, wbuffer_empty_hmr2core;
+  logic [NumPhysicalCores-1:0] wbuffer_not_ni_core2hmr, wbuffer_not_ni_hmr2core;
   // AMO request and response
-  ariane_pkg::amo_req_t [NumCores-1:0] dcache_amo_req_core2hmr, dcache_amo_req_hmr2core;
-  ariane_pkg::amo_resp_t [NumCores-1:0] dcache_amo_resp_core2hmr, dcache_amo_resp_hmr2core;
+  ariane_pkg::amo_req_t [NumPhysicalCores-1:0] dcache_amo_req_core2hmr, dcache_amo_req_hmr2core;
+  ariane_pkg::amo_resp_t [NumPhysicalCores-1:0] dcache_amo_resp_core2hmr, dcache_amo_resp_hmr2core;
   // D-cache flush signals
-  logic [NumCores-1:0] dcache_flush_core2hmr, dcache_flush_hmr2core;
-  logic [NumCores-1:0] dcache_flush_ack_core2hmr, dcache_flush_ack_hmr2core;
+  logic [NumPhysicalCores-1:0] dcache_flush_core2hmr, dcache_flush_hmr2core;
+  logic [NumPhysicalCores-1:0] dcache_flush_ack_core2hmr, dcache_flush_ack_hmr2core;
 
-  for (genvar i = 0; i < NumCores; i++) begin : gen_cva6_core
+  for (genvar i = 0; i < NumPhysicalCores; i++) begin : gen_cva6_core
 
-    // Tieoff for core outputs to HMR
-    assign core2hmr[i]          = '{default: '0};
+    if (i == 0 || EnableHMR) begin : gen_main_bindings
+      // Tieoff for core outputs to HMR
+      assign core2hmr[i]          = '{default: '0};
 
-    // Bind system inputs to HMR
-    assign sys2hmr[i].hart_id   = hart_id_i[i];
-    assign sys2hmr[i].irq       = irq_i[i];
-    assign sys2hmr[i].ipi       = ipi_i[i];
-    assign sys2hmr[i].time_irq  = time_irq_i[i];
-    assign sys2hmr[i].debug_req = debug_req_i[i];
+      // Bind system inputs to HMR
+      assign sys2hmr[i].hart_id   = hart_id_i[i];
+      assign sys2hmr[i].irq       = irq_i[i];
+      assign sys2hmr[i].ipi       = ipi_i[i];
+      assign sys2hmr[i].time_irq  = time_irq_i[i];
+      assign sys2hmr[i].debug_req = debug_req_i[i];
 
-    // Bind HMR outputs to system.
-    assign noc_req_o[i]         = noc_req_hmr2sys[i];
-    assign noc_resp_sys2hmr[i]  = noc_resp_i[i];
+      // Bind HMR outputs to NoC outputs.
+      assign noc_req_o[i]         = noc_req_hmr2sys[i];
+
+      // Bind NoC inputs to HMR.
+      assign noc_resp_sys2hmr[i]  = noc_resp_i[i];
+    end else begin : gen_shadow_bindings
+      // Tieoff for core outputs to HMR
+      assign core2hmr[i]          = '{default: '0};
+
+      // Bind system inputs to HMR
+      assign sys2hmr[i].hart_id   = hart_id_i[0];
+      assign sys2hmr[i].irq       = irq_i[0];
+      assign sys2hmr[i].ipi       = ipi_i[0];
+      assign sys2hmr[i].time_irq  = time_irq_i[0];
+      assign sys2hmr[i].debug_req = debug_req_i[0];
+
+      // Bind NoC inputs to HMR.
+      assign noc_resp_sys2hmr[i]  = noc_resp_i[0];
+    end
 
     cva6 #(
         // CVA6 config
@@ -386,7 +407,7 @@ module cva6_top
     );
   end
 
-  if (NumCores == 1) begin : gen_single_core
+  if (!EnableDMR) begin : gen_single_core
     assign dmr_failure_o = 1'b0;
     assign hmr2sys = core2hmr;
     assign noc_req_hmr2sys = noc_req_core2hmr;
@@ -404,7 +425,7 @@ module cva6_top
     assign icache_arsp_hmr2core = icache_arsp_core2hmr;
     assign icache_dreq_hmr2core = icache_dreq_core2hmr;
     assign icache_drsp_hmr2core = icache_drsp_core2hmr;
-  end else if (NumCores == 2) begin : gen_hmr
+  end else begin : gen_hmr
     hmr_unit #(
         // CVA6 config
         .CVA6Cfg(CVA6Cfg),
@@ -445,10 +466,10 @@ module cva6_top
         .core_bus_outputs_i(noc_req_core2hmr),
         .core_bus_inputs_o(noc_resp_hmr2core),
         // Signals between HMR unit and data cache
-        .dcache_req_core2hmr_i(dcache_req_core2hmr[NumCores-1:0]),
-        .dcache_req_hmr2core_o(dcache_req_hmr2core[NumCores-1:0]),
-        .dcache_rsp_core2hmr_i(dcache_rsp_core2hmr[NumCores-1:0]),
-        .dcache_rsp_hmr2core_o(dcache_rsp_hmr2core[NumCores-1:0]),
+        .dcache_req_core2hmr_i(dcache_req_core2hmr),
+        .dcache_req_hmr2core_o(dcache_req_hmr2core),
+        .dcache_rsp_core2hmr_i(dcache_rsp_core2hmr),
+        .dcache_rsp_hmr2core_o(dcache_rsp_hmr2core),
         // Data cache write buffer signals
         .dcache_wbuffer_empty_core2hmr_i(wbuffer_empty_core2hmr),
         .dcache_wbuffer_empty_hmr2core_o(wbuffer_empty_hmr2core),
@@ -474,7 +495,14 @@ module cva6_top
         .icache_drsp_core2hmr_i(icache_drsp_core2hmr),
         .icache_drsp_hmr2core_o(icache_drsp_hmr2core)
     );
-  end else begin
-    $error("Unsupported number of cores.");
   end
+
+// pragma translate_off
+`ifndef VERILATOR
+initial begin
+  IllegalHMRConfiguration: assert (EnableHMR -> EnableDMR)
+    else $fatal(1, "HMR requires DMR.");
+end
+`endif
+// pragma translate_on
 endmodule
