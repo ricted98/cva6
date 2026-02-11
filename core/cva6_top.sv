@@ -230,7 +230,9 @@ module cva6_top
     logic                    debug_req;
   } cva6_inputs_t;
 
-  typedef logic cva6_outputs_t;
+  typedef struct packed {
+    logic tieoff;
+  } cva6_outputs_t;
 
   cva6_inputs_t [NumCores-1:0] sys2hmr, hmr2core;
   cva6_outputs_t [NumCores-1:0] hmr2sys, core2hmr;
@@ -255,7 +257,7 @@ module cva6_top
   for (genvar i = 0; i < NumCores; i++) begin : gen_cva6_core
 
     // Tieoff for core outputs to HMR
-    assign core2hmr[i]          = '0;
+    assign core2hmr[i]          = '{default: '0};
 
     // Bind system inputs to HMR
     assign sys2hmr[i].hart_id   = hart_id_i[i];
