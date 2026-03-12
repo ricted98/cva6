@@ -96,6 +96,7 @@ ${CVA6_REPO_DIR}/core/include/wt_cache_pkg.sv
 ${CVA6_REPO_DIR}/core/include/std_cache_pkg.sv
 ${CVA6_REPO_DIR}/core/include/instr_tracer_pkg.sv
 ${CVA6_REPO_DIR}/core/include/build_config_pkg.sv
+${CVA6_REPO_DIR}/core/include/cva6_hpdcache_cfg_pkg.sv
 ${CVA6_REPO_DIR}/core/include/aes_pkg.sv
 ${CVA6_REPO_DIR}/core/include/triggers_pkg.sv
 
@@ -129,7 +130,12 @@ ${CVA6_REPO_DIR}/vendor/pulp-platform/common_cells/src/exp_backoff.sv
 ${CVA6_REPO_DIR}/vendor/pulp-platform/common_cells/src/counter.sv
 ${CVA6_REPO_DIR}/vendor/pulp-platform/common_cells/src/delta_counter.sv
 
+// HMR
+${CVA6_REPO_DIR}/core/hmr/dmr_checker.sv
+${CVA6_REPO_DIR}/core/hmr/hmr_unit.sv
+
 // Top-level source files (not necessarily instantiated at the top of the cva6).
+${CVA6_REPO_DIR}/core/cva6_top.sv
 ${CVA6_REPO_DIR}/core/cva6.sv
 ${CVA6_REPO_DIR}/core/cva6_rvfi_probes.sv
 ${CVA6_REPO_DIR}/core/alu.sv
