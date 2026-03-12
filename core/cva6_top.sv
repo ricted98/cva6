@@ -18,7 +18,7 @@ module cva6_top
     parameter bit EnableHMR = 1'b0,
 
     localparam int unsigned NumPhysicalCores = EnableDMR ? 2 : 1,
-    localparam int unsigned NumLogicalCores  = EnableHMR ? NumPhysicalCores : 1,
+    localparam int unsigned NumLogicalCores = EnableHMR ? NumPhysicalCores : 1,
     // CVA6 config
     parameter config_pkg::cva6_cfg_t CVA6Cfg = build_config_pkg::build_config(
         cva6_config_pkg::cva6_cfg
@@ -349,8 +349,9 @@ module cva6_top
 
   // HPDcache configuration computed from CVA6 parameters
   localparam int NumPorts = 4;
-  localparam hpdcache_pkg::hpdcache_cfg_t HPDcacheCfg =
-      cva6_hpdcache_cfg_pkg::hpdcacheBuildCfg(CVA6Cfg, NumPorts);
+  localparam hpdcache_pkg::hpdcache_cfg_t HPDcacheCfg = cva6_hpdcache_cfg_pkg::hpdcacheBuildCfg(
+      CVA6Cfg, NumPorts
+  );
 
   // D$ external SRAM types derived from HPDcacheCfg
   `HPDCACHE_TYPEDEF_EXT_SRAM_REQ_T(dcache_ext_sram_req_t, HPDcacheCfg);
@@ -379,10 +380,10 @@ module cva6_top
   // Intermediate signals: cores <-> HMR <-> system
   cva6_inputs_t [NumPhysicalCores-1:0] sys2hmr, hmr2core;
 
-  noc_req_t  [NumPhysicalCores-1:0] noc_req_core2hmr, noc_req_hmr2sys;
+  noc_req_t [NumPhysicalCores-1:0] noc_req_core2hmr, noc_req_hmr2sys;
   noc_resp_t [NumPhysicalCores-1:0] noc_resp_sys2hmr, noc_resp_hmr2core;
 
-  dcache_ext_sram_req_t  [NumPhysicalCores-1:0] ext_sram_req_core2hmr, ext_sram_req_hmr2sys;
+  dcache_ext_sram_req_t [NumPhysicalCores-1:0] ext_sram_req_core2hmr, ext_sram_req_hmr2sys;
   dcache_ext_sram_resp_t [NumPhysicalCores-1:0] ext_sram_resp_sys2hmr, ext_sram_resp_hmr2core;
 
   // System input binding (same inputs for all physical cores)
@@ -399,25 +400,25 @@ module cva6_top
   assign noc_req_o = noc_req_hmr2sys[0];
   assign noc_resp_sys2hmr[0] = noc_resp_i;
   if (NumPhysicalCores > 1) begin : gen_tie_off_sys
-    assign noc_resp_sys2hmr[1]     = '0;
+    assign noc_resp_sys2hmr[1]      = '0;
     assign ext_sram_resp_sys2hmr[1] = '0;
   end
 
   // D$ SRAM macros – driven by the checked ext_sram request from HMR index [0]
   hpdcache_memwrap #(
-      .HPDcacheCfg                  (HPDcacheCfg),
-      .hpdcache_way_vector_t        (sram_way_vector_t),
-      .hpdcache_dir_addr_t          (sram_dir_addr_t),
-      .hpdcache_dir_entry_t         (sram_dir_entry_t),
-      .hpdcache_data_addr_t         (sram_data_addr_t),
-      .hpdcache_data_enable_t       (sram_data_enable_t),
-      .hpdcache_data_be_entry_t     (sram_data_be_entry_t),
-      .hpdcache_data_entry_t        (sram_data_entry_t),
-      .hpdcache_data_row_enable_t   (sram_data_row_enable_t),
-      .hpdcache_data_ram_word_sel_t (sram_data_ram_word_sel_t)
+      .HPDcacheCfg                 (HPDcacheCfg),
+      .hpdcache_way_vector_t       (sram_way_vector_t),
+      .hpdcache_dir_addr_t         (sram_dir_addr_t),
+      .hpdcache_dir_entry_t        (sram_dir_entry_t),
+      .hpdcache_data_addr_t        (sram_data_addr_t),
+      .hpdcache_data_enable_t      (sram_data_enable_t),
+      .hpdcache_data_be_entry_t    (sram_data_be_entry_t),
+      .hpdcache_data_entry_t       (sram_data_entry_t),
+      .hpdcache_data_row_enable_t  (sram_data_row_enable_t),
+      .hpdcache_data_ram_word_sel_t(sram_data_ram_word_sel_t)
   ) i_dcache_sram (
-      .clk_i (clk_i),
-      .rst_ni(rst_ni),
+      .clk_i             (clk_i),
+      .rst_ni            (rst_ni),
       // Directory interface
       .dir_cs_i          (ext_sram_req_hmr2sys[0].dir_cs),
       .dir_we_i          (ext_sram_req_hmr2sys[0].dir_we),
@@ -484,31 +485,31 @@ module cva6_top
         .dcache_ext_sram_resp_t(dcache_ext_sram_resp_t)
     ) i_cva6_core (
         // Subsystem Clock - SUBSYSTEM
-        .clk_i       (clk_i),
+        .clk_i                 (clk_i),
         // Asynchronous reset active low - SUBSYSTEM
-        .rst_ni      (rst_ni),
+        .rst_ni                (rst_ni),
         // Reset boot address - SUBSYSTEM
-        .boot_addr_i (hmr2core[i].boot_addr),
+        .boot_addr_i           (hmr2core[i].boot_addr),
         // Hard ID reflected as CSR - SUBSYSTEM
-        .hart_id_i   (hmr2core[i].hart_id),
+        .hart_id_i             (hmr2core[i].hart_id),
         // Level sensitive (async) interrupts - SUBSYSTEM
-        .irq_i       (hmr2core[i].irq),
+        .irq_i                 (hmr2core[i].irq),
         // Inter-processor (async) interrupt - SUBSYSTEM
-        .ipi_i       (hmr2core[i].ipi),
+        .ipi_i                 (hmr2core[i].ipi),
         // Timer (async) interrupt - SUBSYSTEM
-        .time_irq_i  (hmr2core[i].time_irq),
+        .time_irq_i            (hmr2core[i].time_irq),
         // Debug (async) request - SUBSYSTEM
-        .debug_req_i (hmr2core[i].debug_req),
+        .debug_req_i           (hmr2core[i].debug_req),
         // Probes to build RVFI, can be left open when not used - RVFI
-        .rvfi_probes_o (),
+        .rvfi_probes_o         (),
         // CVXIF request - SUBSYSTEM
-        .cvxif_req_o (),
+        .cvxif_req_o           (),
         // CVXIF response - SUBSYSTEM
-        .cvxif_resp_i ('0),
+        .cvxif_resp_i          ('0),
         // noc request, can be AXI or OpenPiton - SUBSYSTEM
-        .noc_req_o   (noc_req_core2hmr[i]),
+        .noc_req_o             (noc_req_core2hmr[i]),
         // noc response, can be AXI or OpenPiton - SUBSYSTEM
-        .noc_resp_i  (noc_resp_hmr2core[i]),
+        .noc_resp_i            (noc_resp_hmr2core[i]),
         // D$ external SRAM interface
         .dcache_ext_sram_req_o (ext_sram_req_core2hmr[i]),
         .dcache_ext_sram_resp_i(ext_sram_resp_hmr2core[i])
@@ -517,37 +518,37 @@ module cva6_top
 
   if (NumPhysicalCores == 1) begin : gen_single_core
     // No DMR – straight passthrough
-    assign dmr_failure_o = 1'b0;
-    assign hmr2core[0]              = sys2hmr[0];
-    assign noc_req_hmr2sys[0]       = noc_req_core2hmr[0];
-    assign noc_resp_hmr2core[0]     = noc_resp_sys2hmr[0];
-    assign ext_sram_req_hmr2sys[0]  = ext_sram_req_core2hmr[0];
+    assign dmr_failure_o             = 1'b0;
+    assign hmr2core[0]               = sys2hmr[0];
+    assign noc_req_hmr2sys[0]        = noc_req_core2hmr[0];
+    assign noc_resp_hmr2core[0]      = noc_resp_sys2hmr[0];
+    assign ext_sram_req_hmr2sys[0]   = ext_sram_req_core2hmr[0];
     assign ext_sram_resp_hmr2core[0] = ext_sram_resp_sys2hmr[0];
 
   end else if (NumPhysicalCores == 2) begin : gen_hmr
 
     hmr_unit #(
-        .CVA6Cfg       (CVA6Cfg),
-        .all_inputs_t  (cva6_inputs_t),
-        .bus_outputs_t (noc_req_t),
-        .bus_inputs_t  (noc_resp_t),
+        .CVA6Cfg        (CVA6Cfg),
+        .all_inputs_t   (cva6_inputs_t),
+        .bus_outputs_t  (noc_req_t),
+        .bus_inputs_t   (noc_resp_t),
         .ext_sram_req_t (dcache_ext_sram_req_t),
         .ext_sram_resp_t(dcache_ext_sram_resp_t)
     ) i_hmr_unit (
-        .clk_i (clk_i),
-        .rst_ni(rst_ni),
-        .dmr_mode_active_i(dmr_mode_active_i),
-        .dmr_failure_o    (dmr_failure_o),
+        .clk_i               (clk_i),
+        .rst_ni              (rst_ni),
+        .dmr_mode_active_i   (dmr_mode_active_i),
+        .dmr_failure_o       (dmr_failure_o),
         // System side
-        .sys_inputs_i      (sys2hmr),
-        .sys_bus_outputs_o (noc_req_hmr2sys),
-        .sys_bus_inputs_i  (noc_resp_sys2hmr),
-        .sys_ext_sram_req_o (ext_sram_req_hmr2sys),
-        .sys_ext_sram_resp_i(ext_sram_resp_sys2hmr),
+        .sys_inputs_i        (sys2hmr),
+        .sys_bus_outputs_o   (noc_req_hmr2sys),
+        .sys_bus_inputs_i    (noc_resp_sys2hmr),
+        .sys_ext_sram_req_o  (ext_sram_req_hmr2sys),
+        .sys_ext_sram_resp_i (ext_sram_resp_sys2hmr),
         // Core side
-        .core_inputs_o      (hmr2core),
-        .core_bus_outputs_i (noc_req_core2hmr),
-        .core_bus_inputs_o  (noc_resp_hmr2core),
+        .core_inputs_o       (hmr2core),
+        .core_bus_outputs_i  (noc_req_core2hmr),
+        .core_bus_inputs_o   (noc_resp_hmr2core),
         .core_ext_sram_req_i (ext_sram_req_core2hmr),
         .core_ext_sram_resp_o(ext_sram_resp_hmr2core)
     );

@@ -29,9 +29,7 @@ package cva6_hpdcache_cfg_pkg;
   //    NumPorts: CMO
   //    NumPorts + 1: Hardware Memory Prefetcher (hwpf)
   function automatic hpdcache_pkg::hpdcache_user_cfg_t hpdcacheSetUserConfig(
-      config_pkg::cva6_cfg_t CVA6Cfg,
-      int NumPorts
-  );
+      config_pkg::cva6_cfg_t CVA6Cfg, int NumPorts);
     int HPDCACHE_NREQUESTERS = NumPorts + 2;
     hpdcache_pkg::hpdcache_user_cfg_t userCfg;
     userCfg.nRequesters = HPDCACHE_NREQUESTERS;
@@ -82,10 +80,8 @@ package cva6_hpdcache_cfg_pkg;
   endfunction
 
   // Convenience function: compute the full HPDcacheCfg in one call.
-  function automatic hpdcache_pkg::hpdcache_cfg_t hpdcacheBuildCfg(
-      config_pkg::cva6_cfg_t CVA6Cfg,
-      int NumPorts
-  );
+  function automatic hpdcache_pkg::hpdcache_cfg_t hpdcacheBuildCfg(config_pkg::cva6_cfg_t CVA6Cfg,
+                                                                   int NumPorts);
     return hpdcache_pkg::hpdcacheBuildConfig(hpdcacheSetUserConfig(CVA6Cfg, NumPorts));
   endfunction
 

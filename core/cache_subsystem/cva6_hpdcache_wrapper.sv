@@ -345,27 +345,27 @@ module cva6_hpdcache_wrapper
   );
 
   hpdcache #(
-      .HPDcacheCfg          (HPDcacheCfg),
-      .wbuf_timecnt_t       (hpdcache_wbuf_timecnt_t),
-      .hpdcache_tag_t       (hpdcache_tag_t),
-      .hpdcache_data_word_t (hpdcache_data_word_t),
-      .hpdcache_data_be_t   (hpdcache_data_be_t),
-      .hpdcache_req_offset_t(hpdcache_req_offset_t),
-      .hpdcache_req_data_t  (hpdcache_req_data_t),
-      .hpdcache_req_be_t    (hpdcache_req_be_t),
-      .hpdcache_req_sid_t   (hpdcache_req_sid_t),
-      .hpdcache_req_tid_t   (hpdcache_req_tid_t),
-      .hpdcache_req_t       (hpdcache_req_t),
-      .hpdcache_rsp_t       (hpdcache_rsp_t),
-      .hpdcache_mem_addr_t  (hpdcache_mem_addr_t),
-      .hpdcache_mem_id_t    (hpdcache_mem_id_t),
-      .hpdcache_mem_data_t  (hpdcache_mem_data_t),
-      .hpdcache_mem_be_t    (hpdcache_mem_be_t),
-      .hpdcache_mem_req_t   (hpdcache_mem_req_t),
-      .hpdcache_mem_req_w_t (hpdcache_mem_req_w_t),
-      .hpdcache_mem_resp_r_t(hpdcache_mem_resp_r_t),
-      .hpdcache_mem_resp_w_t(hpdcache_mem_resp_w_t),
-      .hpdcache_ext_sram_req_t(hpdcache_ext_sram_req_t),
+      .HPDcacheCfg             (HPDcacheCfg),
+      .wbuf_timecnt_t          (hpdcache_wbuf_timecnt_t),
+      .hpdcache_tag_t          (hpdcache_tag_t),
+      .hpdcache_data_word_t    (hpdcache_data_word_t),
+      .hpdcache_data_be_t      (hpdcache_data_be_t),
+      .hpdcache_req_offset_t   (hpdcache_req_offset_t),
+      .hpdcache_req_data_t     (hpdcache_req_data_t),
+      .hpdcache_req_be_t       (hpdcache_req_be_t),
+      .hpdcache_req_sid_t      (hpdcache_req_sid_t),
+      .hpdcache_req_tid_t      (hpdcache_req_tid_t),
+      .hpdcache_req_t          (hpdcache_req_t),
+      .hpdcache_rsp_t          (hpdcache_rsp_t),
+      .hpdcache_mem_addr_t     (hpdcache_mem_addr_t),
+      .hpdcache_mem_id_t       (hpdcache_mem_id_t),
+      .hpdcache_mem_data_t     (hpdcache_mem_data_t),
+      .hpdcache_mem_be_t       (hpdcache_mem_be_t),
+      .hpdcache_mem_req_t      (hpdcache_mem_req_t),
+      .hpdcache_mem_req_w_t    (hpdcache_mem_req_w_t),
+      .hpdcache_mem_resp_r_t   (hpdcache_mem_resp_r_t),
+      .hpdcache_mem_resp_w_t   (hpdcache_mem_resp_w_t),
+      .hpdcache_ext_sram_req_t (hpdcache_ext_sram_req_t),
       .hpdcache_ext_sram_resp_t(hpdcache_ext_sram_resp_t)
   ) i_hpdcache (
       .clk_i,
@@ -430,14 +430,14 @@ module cva6_hpdcache_wrapper
       .cfg_scrub_period_i                 (6'd0),
       .cfg_scrub_restart_i                (1'b0),
 
-      .evt_cache_dir_unc_err_o            (  /* unused */),
-      .evt_cache_dir_cor_err_o            (  /* unused */),
-      .evt_cache_dat_unc_err_o            (  /* unused */),
-      .evt_cache_dat_cor_err_o            (  /* unused */),
-      .evt_scrub_complete_o               (  /* unused */),
+      .evt_cache_dir_unc_err_o(  /* unused */),
+      .evt_cache_dir_cor_err_o(  /* unused */),
+      .evt_cache_dat_unc_err_o(  /* unused */),
+      .evt_cache_dat_cor_err_o(  /* unused */),
+      .evt_scrub_complete_o   (  /* unused */),
 
-      .ext_sram_req_o                     (dcache_ext_sram_req_o),
-      .ext_sram_resp_i                    (dcache_ext_sram_resp_i)
+      .ext_sram_req_o (dcache_ext_sram_req_o),
+      .ext_sram_resp_i(dcache_ext_sram_resp_i)
   );
 
   assign dcache_miss_o = dcache_read_miss, wbuffer_not_ni_o = wbuffer_empty_o;

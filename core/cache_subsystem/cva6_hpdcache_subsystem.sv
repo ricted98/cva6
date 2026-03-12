@@ -177,9 +177,12 @@ module cva6_hpdcache_subsystem
   `include "hpdcache_typedef.svh"
 
   localparam hpdcache_pkg::hpdcache_user_cfg_t HPDcacheUserCfg =
-      cva6_hpdcache_cfg_pkg::hpdcacheSetUserConfig(CVA6Cfg, NumPorts);
-  localparam hpdcache_pkg::hpdcache_cfg_t HPDcacheCfg =
-      hpdcache_pkg::hpdcacheBuildConfig(HPDcacheUserCfg);
+      cva6_hpdcache_cfg_pkg::hpdcacheSetUserConfig(
+      CVA6Cfg, NumPorts
+  );
+  localparam hpdcache_pkg::hpdcache_cfg_t HPDcacheCfg = hpdcache_pkg::hpdcacheBuildConfig(
+      HPDcacheUserCfg
+  );
 
   `HPDCACHE_TYPEDEF_MEM_ATTR_T(hpdcache_mem_addr_t, hpdcache_mem_id_t, hpdcache_mem_data_t,
                                hpdcache_mem_be_t, HPDcacheCfg);
@@ -295,7 +298,7 @@ module cva6_hpdcache_subsystem
       .dcache_mem_resp_write_valid_i(dcache_write_resp_valid),
       .dcache_mem_resp_write_i(dcache_write_resp),
 
-      .dcache_ext_sram_req_o(dcache_ext_sram_req_o),
+      .dcache_ext_sram_req_o (dcache_ext_sram_req_o),
       .dcache_ext_sram_resp_i(dcache_ext_sram_resp_i)
   );
 

@@ -53,7 +53,7 @@ module hmr_unit #(
 );
 
   // DMR checked signals & failure flags
-  bus_outputs_t  dmr_bus_outputs;
+  bus_outputs_t dmr_bus_outputs;
   ext_sram_req_t dmr_ext_sram_req;
 
   logic dmr_failure_bus;
