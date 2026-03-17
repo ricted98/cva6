@@ -437,7 +437,10 @@ module cva6_hpdcache_wrapper
       .evt_scrub_complete_o   (  /* unused */),
 
       .ext_sram_req_o (dcache_ext_sram_req_o),
-      .ext_sram_resp_i(dcache_ext_sram_resp_i)
+      .ext_sram_resp_i(dcache_ext_sram_resp_i),
+
+      .mem_resp_read_inval_i      ('0),
+      .mem_resp_read_inval_nline_i('0)
   );
 
   assign dcache_miss_o = dcache_read_miss, wbuffer_not_ni_o = wbuffer_empty_o;
