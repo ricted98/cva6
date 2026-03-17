@@ -38,6 +38,9 @@ ${CVA6_REPO_DIR}/vendor/pulp-platform/fpga-support/rtl/SyncDpRam_ind_r_w.sv
 +incdir+${CVA6_REPO_DIR}/vendor/pulp-platform/axi/include/
 +incdir+${CVA6_REPO_DIR}/common/local/util/
 
+// HPDCache
+-F ${HPDCACHE_DIR}/rtl/hpdcache.Flist
+
 // Floating point unit
 ${CVA6_REPO_DIR}/core/cvfpu/src/fpnew_pkg.sv
 ${CVA6_REPO_DIR}/core/cvfpu/src/fpnew_cast_multi.sv
@@ -94,9 +97,9 @@ ${CVA6_REPO_DIR}/vendor/pulp-platform/axi/src/axi_pkg.sv
 // Packages
 ${CVA6_REPO_DIR}/core/include/wt_cache_pkg.sv
 ${CVA6_REPO_DIR}/core/include/std_cache_pkg.sv
+${CVA6_REPO_DIR}/core/include/cva6_hpdcache_cfg_pkg.sv
 ${CVA6_REPO_DIR}/core/include/instr_tracer_pkg.sv
 ${CVA6_REPO_DIR}/core/include/build_config_pkg.sv
-${CVA6_REPO_DIR}/core/include/cva6_hpdcache_cfg_pkg.sv
 ${CVA6_REPO_DIR}/core/include/aes_pkg.sv
 ${CVA6_REPO_DIR}/core/include/triggers_pkg.sv
 
@@ -203,7 +206,6 @@ ${CVA6_REPO_DIR}/core/cache_subsystem/cache_ctrl.sv
 ${CVA6_REPO_DIR}/core/cache_subsystem/cva6_icache_axi_wrapper.sv
 ${CVA6_REPO_DIR}/core/cache_subsystem/std_cache_subsystem.sv
 ${CVA6_REPO_DIR}/core/cache_subsystem/std_nbdcache.sv
--F ${HPDCACHE_DIR}/rtl/hpdcache.Flist
 ${HPDCACHE_DIR}/rtl/src/utils/hpdcache_mem_resp_demux.sv
 ${HPDCACHE_DIR}/rtl/src/utils/hpdcache_mem_to_axi_read.sv
 ${HPDCACHE_DIR}/rtl/src/utils/hpdcache_mem_to_axi_write.sv
