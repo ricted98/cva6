@@ -406,8 +406,16 @@ module cva6_hpdcache_wrapper
       .evt_rtab_rollback_o   (  /* unused */),
       .evt_stall_refill_o    (  /* unused */),
       .evt_stall_o           (  /* unused */),
+      .evt_cache_dir_unc_err_o (  /* unused */),
+      .evt_cache_dir_cor_err_o (  /* unused */),
+      .evt_cache_dat_unc_err_o (  /* unused */),
+      .evt_cache_dat_cor_err_o (  /* unused */),
+      .evt_scrub_complete_o    (  /* unused */),
 
       .wbuf_empty_o(wbuffer_empty_o),
+
+      .mem_resp_read_inval_i       ('0),
+      .mem_resp_read_inval_nline_i ('0),
 
       .cfg_enable_i                       (dcache_enable_i),
       .cfg_wbuf_threshold_i               (3'd2),
@@ -417,7 +425,10 @@ module cva6_hpdcache_wrapper
       .cfg_prefetch_updt_plru_i           (1'b1),
       .cfg_error_on_cacheable_amo_i       (1'b0),
       .cfg_rtab_single_entry_i            (1'b0),
-      .cfg_default_wb_i                   (1'b0)
+      .cfg_default_wb_i                   (1'b0),
+      .cfg_scrub_enable_i                 ('0),
+      .cfg_scrub_period_i                 ('0),
+      .cfg_scrub_restart_i                ('0)
   );
 
   assign dcache_miss_o = dcache_read_miss, wbuffer_not_ni_o = wbuffer_empty_o;
