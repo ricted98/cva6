@@ -239,6 +239,8 @@ sources:
       - core/cache_subsystem/hpdcache/rtl/src/common/macros/behav/hpdcache_sram_wbyteenable_ecc_1rw.sv
       - core/cache_subsystem/hpdcache/rtl/src/common/macros/behav/hpdcache_sram_wmask_1rw.sv
       - core/cache_subsystem/hpdcache/rtl/src/common/macros/behav/hpdcache_sram_wmask_ecc_1rw.sv
+      # CVA6 top-level (with external D$ SRAM)
+      - core/cva6_top.sv
 
       # Physical Memory Protection
       - core/pmp/src/pmp.sv
