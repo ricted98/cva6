@@ -428,7 +428,9 @@ module cva6_hpdcache_wrapper
       .cfg_default_wb_i                   (1'b0),
       .cfg_scrub_enable_i                 ('0),
       .cfg_scrub_period_i                 ('0),
-      .cfg_scrub_restart_i                ('0)
+      .cfg_scrub_restart_i                ('0),
+      .ext_sram_req_o                     (/* unused */),
+      .ext_sram_resp_i                    ('0)
   );
 
   assign dcache_miss_o = dcache_read_miss, wbuffer_not_ni_o = wbuffer_empty_o;

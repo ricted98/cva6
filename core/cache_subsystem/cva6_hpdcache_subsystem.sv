@@ -236,6 +236,7 @@ module cva6_hpdcache_subsystem
     userCfg.lowLatency = 1'b1;
     userCfg.eccEn = 1'b0;
     userCfg.eccScrubberEn = 1'b0;
+    userCfg.externalSram = 1'b0;
     return userCfg;
   endfunction
 
