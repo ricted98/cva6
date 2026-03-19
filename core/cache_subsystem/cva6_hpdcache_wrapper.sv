@@ -43,7 +43,9 @@ module cva6_hpdcache_wrapper
     parameter type hpdcache_req_t = logic,
     parameter type hpdcache_rsp_t = logic,
     parameter type hpdcache_wbuf_timecnt_t = logic,
-    parameter type hpdcache_data_be_t = logic
+    parameter type hpdcache_data_be_t = logic,
+    parameter type dcache_ext_sram_req_t = logic,
+    parameter type dcache_ext_sram_resp_t = logic
 )
 //  }}}
 
@@ -111,7 +113,11 @@ module cva6_hpdcache_wrapper
 
     output logic                 dcache_mem_resp_write_ready_o,
     input  logic                 dcache_mem_resp_write_valid_i,
-    input  hpdcache_mem_resp_w_t dcache_mem_resp_write_i
+    input  hpdcache_mem_resp_w_t dcache_mem_resp_write_i,
+
+    //  External SRAM interface
+    output dcache_ext_sram_req_t  dcache_ext_sram_req_o,
+    input  dcache_ext_sram_resp_t dcache_ext_sram_resp_i
 );
 
   localparam int HPDCACHE_NREQUESTERS = NumPorts + 2;
@@ -358,7 +364,9 @@ module cva6_hpdcache_wrapper
       .hpdcache_mem_req_t   (hpdcache_mem_req_t),
       .hpdcache_mem_req_w_t (hpdcache_mem_req_w_t),
       .hpdcache_mem_resp_r_t(hpdcache_mem_resp_r_t),
-      .hpdcache_mem_resp_w_t(hpdcache_mem_resp_w_t)
+      .hpdcache_mem_resp_w_t(hpdcache_mem_resp_w_t),
+      .hpdcache_ext_sram_req_t(dcache_ext_sram_req_t),
+      .hpdcache_ext_sram_resp_t(dcache_ext_sram_resp_t)
   ) i_hpdcache (
       .clk_i,
       .rst_ni,
@@ -429,8 +437,8 @@ module cva6_hpdcache_wrapper
       .cfg_scrub_enable_i                 ('0),
       .cfg_scrub_period_i                 ('0),
       .cfg_scrub_restart_i                ('0),
-      .ext_sram_req_o                     (/* unused */),
-      .ext_sram_resp_i                    ('0)
+      .ext_sram_req_o                     (dcache_ext_sram_req_o),
+      .ext_sram_resp_i                    (dcache_ext_sram_resp_i)
   );
 
   assign dcache_miss_o = dcache_read_miss, wbuffer_not_ni_o = wbuffer_empty_o;

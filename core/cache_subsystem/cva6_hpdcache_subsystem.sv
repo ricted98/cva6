@@ -36,7 +36,9 @@ module cva6_hpdcache_subsystem
     parameter type noc_req_t = logic,
     parameter type noc_resp_t = logic,
     parameter type cmo_req_t = logic,
-    parameter type cmo_rsp_t = logic
+    parameter type cmo_rsp_t = logic,
+    parameter type dcache_ext_sram_req_t = logic,
+    parameter type dcache_ext_sram_resp_t = logic
 )
 //  }}}
 
@@ -124,7 +126,13 @@ module cva6_hpdcache_subsystem
     // TO_BE_COMPLETED - TO_BE_COMPLETED
     output logic [NrHwPrefetchers-1:0][63:0] hwpf_throttle_o,
     // TO_BE_COMPLETED - TO_BE_COMPLETED
-    output logic [               63:0]       hwpf_status_o
+    output logic [               63:0]       hwpf_status_o,
+    //  }}}
+
+    //  External SRAM interface
+    //  {{{
+    output dcache_ext_sram_req_t  dcache_ext_sram_req_o,
+    input  dcache_ext_sram_resp_t dcache_ext_sram_resp_i
     //  }}}
 );
   //  }}}
@@ -238,7 +246,9 @@ module cva6_hpdcache_subsystem
       .hpdcache_req_t(hpdcache_req_t),
       .hpdcache_rsp_t(hpdcache_rsp_t),
       .hpdcache_wbuf_timecnt_t(hpdcache_wbuf_timecnt_t),
-      .hpdcache_data_be_t(hpdcache_data_be_t)
+      .hpdcache_data_be_t(hpdcache_data_be_t),
+      .dcache_ext_sram_req_t(dcache_ext_sram_req_t),
+      .dcache_ext_sram_resp_t(dcache_ext_sram_resp_t)
   ) i_dcache (
       .clk_i(clk_i),
       .rst_ni(rst_ni),
@@ -283,7 +293,10 @@ module cva6_hpdcache_subsystem
 
       .dcache_mem_resp_write_ready_o(dcache_write_resp_ready),
       .dcache_mem_resp_write_valid_i(dcache_write_resp_valid),
-      .dcache_mem_resp_write_i(dcache_write_resp)
+      .dcache_mem_resp_write_i(dcache_write_resp),
+
+      .dcache_ext_sram_req_o(dcache_ext_sram_req_o),
+      .dcache_ext_sram_resp_i(dcache_ext_sram_resp_i)
   );
 
   //  AXI arbiter instantiation

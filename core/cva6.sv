@@ -14,6 +14,7 @@
 
 `include "rvfi_types.svh"
 `include "cvxif_types.svh"
+`include "hpdcache_typedef.svh"
 
 module cva6
   import ariane_pkg::*;
@@ -314,7 +315,10 @@ module cva6
     parameter type cvxif_req_t =
     `CVXIF_REQ_T(CVA6Cfg, x_compressed_req_t, x_issue_req_t, x_register_t, x_commit_t),
     parameter type cvxif_resp_t =
-    `CVXIF_RESP_T(CVA6Cfg, x_compressed_resp_t, x_issue_resp_t, x_result_t)
+    `CVXIF_RESP_T(CVA6Cfg, x_compressed_resp_t, x_issue_resp_t, x_result_t),
+    // D$ external SRAM types
+    parameter type dcache_ext_sram_req_t = logic,
+    parameter type dcache_ext_sram_resp_t = logic
 ) (
     // Subsystem Clock - SUBSYSTEM
     input logic clk_i,
@@ -341,7 +345,11 @@ module cva6
     // noc request, can be AXI or OpenPiton - SUBSYSTEM
     output noc_req_t noc_req_o,
     // noc response, can be AXI or OpenPiton - SUBSYSTEM
-    input noc_resp_t noc_resp_i
+    input noc_resp_t noc_resp_i,
+    // External SRAM interface for HPDcache - SUBSYSTEM
+    output dcache_ext_sram_req_t dcache_ext_sram_req_o,
+    // External SRAM interface for HPDcache - SUBSYSTEM
+    input dcache_ext_sram_resp_t dcache_ext_sram_resp_i
 );
 
   localparam type interrupts_t = struct packed {
@@ -1443,6 +1451,7 @@ module cva6
         .inval_valid_i     (inval_valid),
         .inval_ready_o     (inval_ready)
     );
+    assign dcache_ext_sram_req_o = '0;
   end else if (
         CVA6Cfg.DCacheType == config_pkg::HPDCACHE_WT ||
         CVA6Cfg.DCacheType == config_pkg::HPDCACHE_WB ||
@@ -1468,7 +1477,9 @@ module cva6
         .noc_req_t (noc_req_t),
         .noc_resp_t(noc_resp_t),
         .cmo_req_t (logic  /*FIXME*/),
-        .cmo_rsp_t (logic  /*FIXME*/)
+        .cmo_rsp_t (logic  /*FIXME*/),
+        .dcache_ext_sram_req_t(dcache_ext_sram_req_t),
+        .dcache_ext_sram_resp_t(dcache_ext_sram_resp_t)
     ) i_cache_subsystem (
         .clk_i (clk_i),
         .rst_ni(rst_ni),
@@ -1510,7 +1521,10 @@ module cva6
         .hwpf_status_o      (  /*FIXME*/),
 
         .noc_req_o (noc_req_o),
-        .noc_resp_i(noc_resp_i)
+        .noc_resp_i(noc_resp_i),
+
+        .dcache_ext_sram_req_o(dcache_ext_sram_req_o),
+        .dcache_ext_sram_resp_i(dcache_ext_sram_resp_i)
     );
     assign inval_ready   = 1'b1;
     assign miss_vld_bits = '0;
@@ -1567,6 +1581,7 @@ module cva6
     assign dcache_commit_wbuffer_not_ni = 1'b1;
     assign inval_ready                  = 1'b1;
     assign miss_vld_bits                = '0;
+    assign dcache_ext_sram_req_o               = '0;
   end
 
   // ----------------
