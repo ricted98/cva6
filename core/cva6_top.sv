@@ -15,7 +15,8 @@
 //
 // Description: CVA6 top-level wrapper. Instantiates the CVA6 core and,
 //              when the HPDCache is selected, an external hpdcache_memwrap
-//              for the data cache SRAMs.
+//              for the data cache SRAMs. Optionally instantiates a second
+//              core and an HMR unit for DMR checking.
 
 `include "rvfi_types.svh"
 `include "cvxif_types.svh"
@@ -24,6 +25,13 @@
 module cva6_top
   import ariane_pkg::*;
 #(
+    // Top configurations
+    parameter bit EnableDMR = 1'b0,
+    parameter bit EnableHMR = 1'b0,
+
+    localparam int unsigned NumPhysicalCores = EnableDMR ? 2 : 1,
+    localparam int unsigned NumLogicalCores  = EnableHMR ? NumPhysicalCores : 1,
+
     // CVA6 config
     parameter config_pkg::cva6_cfg_t CVA6Cfg = build_config_pkg::build_config(
         cva6_config_pkg::cva6_cfg
@@ -326,28 +334,32 @@ module cva6_top
     input logic clk_i,
     // Asynchronous reset active low - SUBSYSTEM
     input logic rst_ni,
+    // DMR or independent mode
+    input logic dmr_mode_active_i,
+    // Input of DMR checker were not identical
+    output logic dmr_failure_o,
     // Reset boot address - SUBSYSTEM
-    input logic [CVA6Cfg.VLEN-1:0] boot_addr_i,
+    input logic [NumLogicalCores-1:0][CVA6Cfg.VLEN-1:0] boot_addr_i,
     // Hard ID reflected as CSR - SUBSYSTEM
-    input logic [CVA6Cfg.XLEN-1:0] hart_id_i,
+    input logic [NumLogicalCores-1:0][CVA6Cfg.XLEN-1:0] hart_id_i,
     // Level sensitive (async) interrupts - SUBSYSTEM
-    input logic [1:0] irq_i,
+    input logic [NumLogicalCores-1:0][1:0] irq_i,
     // Inter-processor (async) interrupt - SUBSYSTEM
-    input logic ipi_i,
+    input logic [NumLogicalCores-1:0] ipi_i,
     // Timer (async) interrupt - SUBSYSTEM
-    input logic time_irq_i,
+    input logic [NumLogicalCores-1:0] time_irq_i,
     // Debug (async) request - SUBSYSTEM
-    input logic debug_req_i,
+    input logic [NumLogicalCores-1:0] debug_req_i,
     // Probes to build RVFI, can be left open when not used - RVFI
-    output rvfi_probes_t rvfi_probes_o,
+    output rvfi_probes_t [NumLogicalCores-1:0] rvfi_probes_o,
     // CVXIF request - SUBSYSTEM
-    output cvxif_req_t cvxif_req_o,
+    output cvxif_req_t [NumLogicalCores-1:0] cvxif_req_o,
     // CVXIF response - SUBSYSTEM
-    input cvxif_resp_t cvxif_resp_i,
+    input cvxif_resp_t [NumLogicalCores-1:0] cvxif_resp_i,
     // noc request, can be AXI or OpenPiton - SUBSYSTEM
-    output noc_req_t noc_req_o,
+    output noc_req_t [NumLogicalCores-1:0] noc_req_o,
     // noc response, can be AXI or OpenPiton - SUBSYSTEM
-    input noc_resp_t noc_resp_i
+    input noc_resp_t [NumLogicalCores-1:0] noc_resp_i
 );
 
   // Number of D$ request ports (same as in cva6.sv)
@@ -361,66 +373,61 @@ module cva6_top
   `HPDCACHE_TYPEDEF_EXT_SRAM_REQ_T(dcache_ext_sram_req_t, HPDcacheCfg);
   `HPDCACHE_TYPEDEF_EXT_SRAM_RESP_T(dcache_ext_sram_resp_t, HPDcacheCfg);
 
-  // External SRAM signals
-  dcache_ext_sram_req_t  dcache_ext_sram_req;
-  dcache_ext_sram_resp_t dcache_ext_sram_resp;
-
   // RAM types for hpdcache_memwrap
-  `HPDCACHE_TYPEDEF_RAM_TYPES_T(hpdcache, HPDcacheCfg);
+  `HPDCACHE_TYPEDEF_RAM_TYPES_T(sram, HPDcacheCfg);
 
-  typedef logic unsigned [HPDcacheCfg.u.ways-1:0] hpdcache_way_vector_t;
-  typedef logic [HPDcacheCfg.tagWidth-1:0] hpdcache_tag_t;
+  typedef logic unsigned [HPDcacheCfg.u.ways-1:0] sram_way_vector_t;
+  typedef logic [HPDcacheCfg.tagWidth-1:0] sram_tag_t;
   typedef struct packed {
     logic valid;
     logic wback;
     logic dirty;
     logic fetch;
-    hpdcache_tag_t tag;
-  } hpdcache_dir_entry_t;
+    sram_tag_t tag;
+  } sram_dir_entry_t;
 
-  //  CVA6 core instance
-  cva6 #(
-      .CVA6Cfg             (CVA6Cfg),
-      .rvfi_probes_instr_t (rvfi_probes_instr_t),
-      .rvfi_probes_csr_t   (rvfi_probes_csr_t),
-      .rvfi_probes_t       (rvfi_probes_t),
-      .axi_ar_chan_t       (axi_ar_chan_t),
-      .axi_aw_chan_t       (axi_aw_chan_t),
-      .axi_w_chan_t        (axi_w_chan_t),
-      .noc_req_t           (noc_req_t),
-      .noc_resp_t          (noc_resp_t),
-      .readregflags_t      (readregflags_t),
-      .writeregflags_t     (writeregflags_t),
-      .id_t                (id_t),
-      .hartid_t            (hartid_t),
-      .x_compressed_req_t  (x_compressed_req_t),
-      .x_compressed_resp_t (x_compressed_resp_t),
-      .x_issue_req_t       (x_issue_req_t),
-      .x_issue_resp_t      (x_issue_resp_t),
-      .x_register_t        (x_register_t),
-      .x_commit_t          (x_commit_t),
-      .x_result_t          (x_result_t),
-      .cvxif_req_t         (cvxif_req_t),
-      .cvxif_resp_t        (cvxif_resp_t),
-      .dcache_ext_sram_req_t (dcache_ext_sram_req_t),
-      .dcache_ext_sram_resp_t(dcache_ext_sram_resp_t)
-  ) i_cva6 (
-      .clk_i                (clk_i),
-      .rst_ni               (rst_ni),
-      .boot_addr_i          (boot_addr_i),
-      .hart_id_i            (hart_id_i),
-      .irq_i                (irq_i),
-      .ipi_i                (ipi_i),
-      .time_irq_i           (time_irq_i),
-      .debug_req_i          (debug_req_i),
-      .rvfi_probes_o        (rvfi_probes_o),
-      .cvxif_req_o          (cvxif_req_o),
-      .cvxif_resp_i         (cvxif_resp_i),
-      .noc_req_o            (noc_req_o),
-      .noc_resp_i           (noc_resp_i),
-      .dcache_ext_sram_req_o (dcache_ext_sram_req),
-      .dcache_ext_sram_resp_i(dcache_ext_sram_resp)
-  );
+  // Packed struct wrapping all core scalar inputs
+  typedef struct packed {
+    logic [CVA6Cfg.VLEN-1:0] boot_addr;
+    logic [CVA6Cfg.XLEN-1:0] hart_id;
+    logic [1:0]              irq;
+    logic                    ipi;
+    logic                    time_irq;
+    logic                    debug_req;
+  } cva6_inputs_t;
+
+  // Pack top-level inputs into cva6_inputs_t array [NumLogicalCores]
+  cva6_inputs_t [NumLogicalCores-1:0] sys_inputs;
+  for (genvar i = 0; i < NumLogicalCores; i++) begin : gen_sys_inputs
+    assign sys_inputs[i].boot_addr = boot_addr_i[i];
+    assign sys_inputs[i].hart_id   = hart_id_i[i];
+    assign sys_inputs[i].irq       = irq_i[i];
+    assign sys_inputs[i].ipi       = ipi_i[i];
+    assign sys_inputs[i].time_irq  = time_irq_i[i];
+    assign sys_inputs[i].debug_req = debug_req_i[i];
+  end
+
+  // Intermediate signals: cores <-> HMR
+  cva6_inputs_t [NumPhysicalCores-1:0] hmr2core;
+
+  noc_req_t  [NumPhysicalCores-1:0] noc_req_core2hmr;
+  noc_resp_t [NumPhysicalCores-1:0] noc_resp_hmr2core;
+
+  dcache_ext_sram_req_t  [NumPhysicalCores-1:0] dcache_ext_sram_req_core2hmr;
+  dcache_ext_sram_resp_t [NumPhysicalCores-1:0] dcache_ext_sram_resp_hmr2core;
+
+  // HMR <-> system signals (dimensioned by NumLogicalCores)
+  noc_req_t  [NumLogicalCores-1:0] noc_req_hmr2sys;
+  noc_resp_t [NumLogicalCores-1:0] noc_resp_sys2hmr;
+
+  dcache_ext_sram_req_t  dcache_ext_sram_req_hmr2sys;
+  dcache_ext_sram_resp_t dcache_ext_sram_resp_sys2hmr;
+
+  // System NOC binding
+  for (genvar i = 0; i < NumLogicalCores; i++) begin : gen_noc_binding
+    assign noc_req_o[i]        = noc_req_hmr2sys[i];
+    assign noc_resp_sys2hmr[i] = noc_resp_i[i];
+  end
 
   //  External D$ SRAM instantiation (HPDCache only)
   if (CVA6Cfg.DCacheType == config_pkg::HPDCACHE_WT ||
@@ -429,42 +436,144 @@ module cva6_top
   ) begin : gen_dcache_memwrap
     hpdcache_memwrap #(
         .HPDcacheCfg                 (HPDcacheCfg),
-        .hpdcache_way_vector_t       (hpdcache_way_vector_t),
-        .hpdcache_dir_addr_t         (hpdcache_dir_addr_t),
-        .hpdcache_dir_entry_t        (hpdcache_dir_entry_t),
-        .hpdcache_data_addr_t        (hpdcache_data_addr_t),
-        .hpdcache_data_enable_t      (hpdcache_data_enable_t),
-        .hpdcache_data_be_entry_t    (hpdcache_data_be_entry_t),
-        .hpdcache_data_entry_t       (hpdcache_data_entry_t),
-        .hpdcache_data_row_enable_t  (hpdcache_data_row_enable_t),
-        .hpdcache_data_ram_word_sel_t(hpdcache_data_ram_word_sel_t)
+        .hpdcache_way_vector_t       (sram_way_vector_t),
+        .hpdcache_dir_addr_t         (sram_dir_addr_t),
+        .hpdcache_dir_entry_t        (sram_dir_entry_t),
+        .hpdcache_data_addr_t        (sram_data_addr_t),
+        .hpdcache_data_enable_t      (sram_data_enable_t),
+        .hpdcache_data_be_entry_t    (sram_data_be_entry_t),
+        .hpdcache_data_entry_t       (sram_data_entry_t),
+        .hpdcache_data_row_enable_t  (sram_data_row_enable_t),
+        .hpdcache_data_ram_word_sel_t(sram_data_ram_word_sel_t)
     ) i_dcache_memwrap (
         .clk_i  (clk_i),
         .rst_ni (rst_ni),
 
         // Directory
-        .dir_cs_i        (dcache_ext_sram_req.dir_cs),
-        .dir_we_i        (dcache_ext_sram_req.dir_we),
-        .dir_addr_i      (dcache_ext_sram_req.dir_addr),
-        .dir_wentry_i    (dcache_ext_sram_req.dir_wentry),
-        .dir_rentry_o    (dcache_ext_sram_resp.dir_rentry),
-        .dir_err_cor_o   (dcache_ext_sram_resp.dir_err_cor),
-        .dir_err_unc_o   (dcache_ext_sram_resp.dir_err_unc),
-        .dir_err_valid_o (dcache_ext_sram_resp.dir_err_valid),
-        .dir_err_dirty_o (dcache_ext_sram_resp.dir_err_dirty),
+        .dir_cs_i        (dcache_ext_sram_req_hmr2sys.dir_cs),
+        .dir_we_i        (dcache_ext_sram_req_hmr2sys.dir_we),
+        .dir_addr_i      (dcache_ext_sram_req_hmr2sys.dir_addr),
+        .dir_wentry_i    (dcache_ext_sram_req_hmr2sys.dir_wentry),
+        .dir_rentry_o    (dcache_ext_sram_resp_sys2hmr.dir_rentry),
+        .dir_err_cor_o   (dcache_ext_sram_resp_sys2hmr.dir_err_cor),
+        .dir_err_unc_o   (dcache_ext_sram_resp_sys2hmr.dir_err_unc),
+        .dir_err_valid_o (dcache_ext_sram_resp_sys2hmr.dir_err_valid),
+        .dir_err_dirty_o (dcache_ext_sram_resp_sys2hmr.dir_err_dirty),
 
         // Data
-        .data_addr_i       (dcache_ext_sram_req.data_addr),
-        .data_cs_i         (dcache_ext_sram_req.data_cs),
-        .data_we_i         (dcache_ext_sram_req.data_we),
-        .data_wbyteenable_i(dcache_ext_sram_req.data_wbyteenable),
-        .data_wentry_i     (dcache_ext_sram_req.data_wentry),
-        .data_rentry_o     (dcache_ext_sram_resp.data_rentry),
-        .data_err_cor_o    (dcache_ext_sram_resp.data_err_cor),
-        .data_err_unc_o    (dcache_ext_sram_resp.data_err_unc)
+        .data_addr_i       (dcache_ext_sram_req_hmr2sys.data_addr),
+        .data_cs_i         (dcache_ext_sram_req_hmr2sys.data_cs),
+        .data_we_i         (dcache_ext_sram_req_hmr2sys.data_we),
+        .data_wbyteenable_i(dcache_ext_sram_req_hmr2sys.data_wbyteenable),
+        .data_wentry_i     (dcache_ext_sram_req_hmr2sys.data_wentry),
+        .data_rentry_o     (dcache_ext_sram_resp_sys2hmr.data_rentry),
+        .data_err_cor_o    (dcache_ext_sram_resp_sys2hmr.data_err_cor),
+        .data_err_unc_o    (dcache_ext_sram_resp_sys2hmr.data_err_unc)
     );
   end else begin : gen_no_dcache_memwrap
-    assign dcache_ext_sram_resp = '0;
+    assign dcache_ext_sram_resp_sys2hmr = '0;
+  end
+
+  //  Core instantiation
+  // RVFI and CVXIF are connected directly: FIXME
+  for (genvar i = 0; i < NumPhysicalCores; i++) begin : gen_cva6_core
+    cva6 #(
+        .CVA6Cfg             (CVA6Cfg),
+        .rvfi_probes_instr_t (rvfi_probes_instr_t),
+        .rvfi_probes_csr_t   (rvfi_probes_csr_t),
+        .rvfi_probes_t       (rvfi_probes_t),
+        .exception_t         (exception_t),
+        .accelerator_req_t   (accelerator_req_t),
+        .accelerator_resp_t  (accelerator_resp_t),
+        .acc_mmu_req_t       (acc_mmu_req_t),
+        .acc_mmu_resp_t      (acc_mmu_resp_t),
+        .axi_ar_chan_t       (axi_ar_chan_t),
+        .axi_aw_chan_t       (axi_aw_chan_t),
+        .axi_w_chan_t        (axi_w_chan_t),
+        .b_chan_t            (b_chan_t),
+        .r_chan_t            (r_chan_t),
+        .noc_req_t           (noc_req_t),
+        .noc_resp_t          (noc_resp_t),
+        .acc_cfg_t           (acc_cfg_t),
+        .AccCfg              (AccCfg),
+        .readregflags_t      (readregflags_t),
+        .writeregflags_t     (writeregflags_t),
+        .id_t                (id_t),
+        .hartid_t            (hartid_t),
+        .x_compressed_req_t  (x_compressed_req_t),
+        .x_compressed_resp_t (x_compressed_resp_t),
+        .x_issue_req_t       (x_issue_req_t),
+        .x_issue_resp_t      (x_issue_resp_t),
+        .x_register_t        (x_register_t),
+        .x_commit_t          (x_commit_t),
+        .x_result_t          (x_result_t),
+        .cvxif_req_t         (cvxif_req_t),
+        .cvxif_resp_t        (cvxif_resp_t),
+        .dcache_ext_sram_req_t (dcache_ext_sram_req_t),
+        .dcache_ext_sram_resp_t(dcache_ext_sram_resp_t)
+    ) i_cva6 (
+        .clk_i       (clk_i),
+        .rst_ni      (rst_ni),
+        .boot_addr_i (hmr2core[i].boot_addr),
+        .hart_id_i   (hmr2core[i].hart_id),
+        .irq_i       (hmr2core[i].irq),
+        .ipi_i       (hmr2core[i].ipi),
+        .time_irq_i  (hmr2core[i].time_irq),
+        .debug_req_i (hmr2core[i].debug_req),
+        .rvfi_probes_o        (rvfi_probes_o[i]),
+        .cvxif_req_o          (cvxif_req_o[i]),
+        .cvxif_resp_i         (cvxif_resp_i[i]),
+        .noc_req_o            (noc_req_core2hmr[i]),
+        .noc_resp_i           (noc_resp_hmr2core[i]),
+        .dcache_ext_sram_req_o (dcache_ext_sram_req_core2hmr[i]),
+        .dcache_ext_sram_resp_i(dcache_ext_sram_resp_hmr2core[i])
+    );
+  end
+
+  //  HMR / DMR logic
+  if (NumPhysicalCores == 1) begin : gen_single_core
+    // No DMR – straight passthrough
+    assign dmr_failure_o = 1'b0;
+
+    always_comb begin
+      hmr2core[0]                  = sys_inputs[0];
+      noc_req_hmr2sys[0]           = noc_req_core2hmr[0];
+      noc_resp_hmr2core[0]         = noc_resp_sys2hmr[0];
+      dcache_ext_sram_req_hmr2sys  = dcache_ext_sram_req_core2hmr[0];
+      dcache_ext_sram_resp_hmr2core[0] = dcache_ext_sram_resp_sys2hmr;
+    end
+
+  end else if (NumPhysicalCores == 2) begin : gen_hmr
+
+    hmr_unit #(
+        .CVA6Cfg                (CVA6Cfg),
+        .NumLogicalCores        (NumLogicalCores),
+        .all_inputs_t           (cva6_inputs_t),
+        .bus_outputs_t          (noc_req_t),
+        .bus_inputs_t           (noc_resp_t),
+        .dcache_ext_sram_req_t  (dcache_ext_sram_req_t),
+        .dcache_ext_sram_resp_t (dcache_ext_sram_resp_t)
+    ) i_hmr_unit (
+        .clk_i (clk_i),
+        .rst_ni(rst_ni),
+        .dmr_mode_active_i(dmr_mode_active_i),
+        .dmr_failure_o    (dmr_failure_o),
+        // System side ([NumLogicalCores])
+        .sys_inputs_i              (sys_inputs),
+        .sys_bus_outputs_o         (noc_req_hmr2sys),
+        .sys_bus_inputs_i          (noc_resp_sys2hmr),
+        .sys_dcache_ext_sram_req_o (dcache_ext_sram_req_hmr2sys),
+        .sys_dcache_ext_sram_resp_i(dcache_ext_sram_resp_sys2hmr),
+        // Core side ([1:0])
+        .core_inputs_o              (hmr2core),
+        .core_bus_outputs_i         (noc_req_core2hmr),
+        .core_bus_inputs_o          (noc_resp_hmr2core),
+        .core_dcache_ext_sram_req_i (dcache_ext_sram_req_core2hmr),
+        .core_dcache_ext_sram_resp_o(dcache_ext_sram_resp_hmr2core)
+    );
+
+  end else begin
+    $error("Unsupported number of cores.");
   end
 
 endmodule : cva6_top
