@@ -26,7 +26,7 @@ module cva6_top
   import ariane_pkg::*;
 #(
     // Top configurations
-    parameter bit EnableDMR = 1'b0,
+    parameter bit EnableDMR = 1'b1,
     parameter bit EnableHMR = 1'b0,
 
     localparam int unsigned NumPhysicalCores = EnableDMR ? 2 : 1,
@@ -351,11 +351,11 @@ module cva6_top
     // Debug (async) request - SUBSYSTEM
     input logic [NumLogicalCores-1:0] debug_req_i,
     // Probes to build RVFI, can be left open when not used - RVFI
-    output rvfi_probes_t [NumLogicalCores-1:0] rvfi_probes_o,
+    output rvfi_probes_t rvfi_probes_o,
     // CVXIF request - SUBSYSTEM
-    output cvxif_req_t [NumLogicalCores-1:0] cvxif_req_o,
+    output cvxif_req_t cvxif_req_o,
     // CVXIF response - SUBSYSTEM
-    input cvxif_resp_t [NumLogicalCores-1:0] cvxif_resp_i,
+    input cvxif_resp_t cvxif_resp_i,
     // noc request, can be AXI or OpenPiton - SUBSYSTEM
     output noc_req_t [NumLogicalCores-1:0] noc_req_o,
     // noc response, can be AXI or OpenPiton - SUBSYSTEM
@@ -385,6 +385,28 @@ module cva6_top
     logic fetch;
     sram_tag_t tag;
   } sram_dir_entry_t;
+
+  // I$ SRAM parameters and type definitions
+  localparam int unsigned IcacheOffsetWidth = $clog2(CVA6Cfg.ICACHE_LINE_WIDTH / 8);
+  localparam int unsigned IcacheClIdxWidth  = CVA6Cfg.ICACHE_INDEX_WIDTH - IcacheOffsetWidth;
+
+  typedef struct packed {
+    logic [CVA6Cfg.ICACHE_SET_ASSOC-1:0]                                     tag_req;
+    logic                                                                    tag_we;
+    logic [IcacheClIdxWidth-1:0]                                             tag_addr;
+    logic [CVA6Cfg.ICACHE_SET_ASSOC-1:0][CVA6Cfg.ICACHE_TAG_WIDTH:0]         tag_wdata;
+    logic [CVA6Cfg.ICACHE_SET_ASSOC-1:0]                                     data_req;
+    logic                                                                    data_we;
+    logic [IcacheClIdxWidth-1:0]                                             data_addr;
+    logic [CVA6Cfg.ICACHE_LINE_WIDTH-1:0]                                    data_wdata;
+    logic [CVA6Cfg.ICACHE_USER_LINE_WIDTH-1:0]                               data_wuser;
+  } icache_ext_sram_req_t;
+
+  typedef struct packed {
+    logic [CVA6Cfg.ICACHE_SET_ASSOC-1:0][CVA6Cfg.ICACHE_TAG_WIDTH:0]         tag_rdata;
+    logic [CVA6Cfg.ICACHE_SET_ASSOC-1:0][CVA6Cfg.ICACHE_LINE_WIDTH-1:0]      data_rdata;
+    logic [CVA6Cfg.ICACHE_SET_ASSOC-1:0][CVA6Cfg.ICACHE_USER_LINE_WIDTH-1:0] data_ruser;
+  } icache_ext_sram_resp_t;
 
   // Packed struct wrapping all core scalar inputs
   typedef struct packed {
@@ -416,12 +438,18 @@ module cva6_top
   dcache_ext_sram_req_t  [NumPhysicalCores-1:0] dcache_ext_sram_req_core2hmr;
   dcache_ext_sram_resp_t [NumPhysicalCores-1:0] dcache_ext_sram_resp_hmr2core;
 
+  icache_ext_sram_req_t  [NumPhysicalCores-1:0] icache_ext_sram_req_core2hmr;
+  icache_ext_sram_resp_t [NumPhysicalCores-1:0] icache_ext_sram_resp_hmr2core;
+
   // HMR <-> system signals (dimensioned by NumLogicalCores)
   noc_req_t  [NumLogicalCores-1:0] noc_req_hmr2sys;
   noc_resp_t [NumLogicalCores-1:0] noc_resp_sys2hmr;
 
   dcache_ext_sram_req_t  dcache_ext_sram_req_hmr2sys;
   dcache_ext_sram_resp_t dcache_ext_sram_resp_sys2hmr;
+
+  icache_ext_sram_req_t  icache_ext_sram_req_hmr2sys;
+  icache_ext_sram_resp_t icache_ext_sram_resp_sys2hmr;
 
   // System NOC binding
   for (genvar i = 0; i < NumLogicalCores; i++) begin : gen_noc_binding
@@ -474,8 +502,32 @@ module cva6_top
     assign dcache_ext_sram_resp_sys2hmr = '0;
   end
 
+  //  External I$ SRAM instantiation
+  icache_memwrap #(
+      .CVA6Cfg                (CVA6Cfg),
+      .icache_ext_sram_req_t  (icache_ext_sram_req_t),
+      .icache_ext_sram_resp_t (icache_ext_sram_resp_t)
+  ) i_icache_memwrap (
+      .clk_i  (clk_i),
+      .rst_ni (rst_ni),
+      .req_i  (icache_ext_sram_req_hmr2sys),
+      .resp_o (icache_ext_sram_resp_sys2hmr)
+  );
+
   //  Core instantiation
-  // RVFI and CVXIF are connected directly: FIXME
+  //  RVFI and CVXIF are propagated only from core 0 (excluded from HMR)
+  rvfi_probes_t [NumPhysicalCores-1:0] rvfi_probes_core;
+  cvxif_req_t   [NumPhysicalCores-1:0] cvxif_req_core;
+  cvxif_resp_t  [NumPhysicalCores-1:0] cvxif_resp_core;
+
+  assign rvfi_probes_o = rvfi_probes_core[0];
+  assign cvxif_req_o   = cvxif_req_core[0];
+  // In DMR mode, both cores must see the same CVXIF response to avoid divergence.
+  // Core 0's request is forwarded externally; both cores receive the same response.
+  for (genvar i = 0; i < NumPhysicalCores; i++) begin : gen_cvxif_resp
+    assign cvxif_resp_core[i] = cvxif_resp_i;
+  end
+
   for (genvar i = 0; i < NumPhysicalCores; i++) begin : gen_cva6_core
     cva6 #(
         .CVA6Cfg             (CVA6Cfg),
@@ -509,8 +561,11 @@ module cva6_top
         .x_result_t          (x_result_t),
         .cvxif_req_t         (cvxif_req_t),
         .cvxif_resp_t        (cvxif_resp_t),
-        .dcache_ext_sram_req_t (dcache_ext_sram_req_t),
-        .dcache_ext_sram_resp_t(dcache_ext_sram_resp_t)
+        .dcache_ext_sram_req_t  (dcache_ext_sram_req_t),
+        .dcache_ext_sram_resp_t (dcache_ext_sram_resp_t),
+        .IcacheExternalSram     (1'b1),
+        .icache_ext_sram_req_t  (icache_ext_sram_req_t),
+        .icache_ext_sram_resp_t (icache_ext_sram_resp_t)
     ) i_cva6 (
         .clk_i       (clk_i),
         .rst_ni      (rst_ni),
@@ -520,13 +575,15 @@ module cva6_top
         .ipi_i       (hmr2core[i].ipi),
         .time_irq_i  (hmr2core[i].time_irq),
         .debug_req_i (hmr2core[i].debug_req),
-        .rvfi_probes_o        (rvfi_probes_o[i]),
-        .cvxif_req_o          (cvxif_req_o[i]),
-        .cvxif_resp_i         (cvxif_resp_i[i]),
+        .rvfi_probes_o        (rvfi_probes_core[i]),
+        .cvxif_req_o          (cvxif_req_core[i]),
+        .cvxif_resp_i         (cvxif_resp_core[i]),
         .noc_req_o            (noc_req_core2hmr[i]),
         .noc_resp_i           (noc_resp_hmr2core[i]),
-        .dcache_ext_sram_req_o (dcache_ext_sram_req_core2hmr[i]),
-        .dcache_ext_sram_resp_i(dcache_ext_sram_resp_hmr2core[i])
+        .dcache_ext_sram_req_o  (dcache_ext_sram_req_core2hmr[i]),
+        .dcache_ext_sram_resp_i (dcache_ext_sram_resp_hmr2core[i]),
+        .icache_ext_sram_req_o  (icache_ext_sram_req_core2hmr[i]),
+        .icache_ext_sram_resp_i (icache_ext_sram_resp_hmr2core[i])
     );
   end
 
@@ -536,23 +593,28 @@ module cva6_top
     assign dmr_failure_o = 1'b0;
 
     always_comb begin
-      hmr2core[0]                  = sys_inputs[0];
-      noc_req_hmr2sys[0]           = noc_req_core2hmr[0];
-      noc_resp_hmr2core[0]         = noc_resp_sys2hmr[0];
-      dcache_ext_sram_req_hmr2sys  = dcache_ext_sram_req_core2hmr[0];
+      hmr2core[0]                      = sys_inputs[0];
+      noc_req_hmr2sys[0]               = noc_req_core2hmr[0];
+      noc_resp_hmr2core[0]             = noc_resp_sys2hmr[0];
+      dcache_ext_sram_req_hmr2sys      = dcache_ext_sram_req_core2hmr[0];
       dcache_ext_sram_resp_hmr2core[0] = dcache_ext_sram_resp_sys2hmr;
+      icache_ext_sram_req_hmr2sys      = icache_ext_sram_req_core2hmr[0];
+      icache_ext_sram_resp_hmr2core[0] = icache_ext_sram_resp_sys2hmr;
     end
 
   end else if (NumPhysicalCores == 2) begin : gen_hmr
 
     hmr_unit #(
-        .CVA6Cfg                (CVA6Cfg),
-        .NumLogicalCores        (NumLogicalCores),
-        .all_inputs_t           (cva6_inputs_t),
-        .bus_outputs_t          (noc_req_t),
-        .bus_inputs_t           (noc_resp_t),
-        .dcache_ext_sram_req_t  (dcache_ext_sram_req_t),
-        .dcache_ext_sram_resp_t (dcache_ext_sram_resp_t)
+        .CVA6Cfg                 (CVA6Cfg),
+        .EnableDMR               (EnableDMR),
+        .EnableHMR               (EnableHMR),
+        .all_inputs_t            (cva6_inputs_t),
+        .bus_outputs_t           (noc_req_t),
+        .bus_inputs_t            (noc_resp_t),
+        .dcache_ext_sram_req_t   (dcache_ext_sram_req_t),
+        .dcache_ext_sram_resp_t  (dcache_ext_sram_resp_t),
+        .icache_ext_sram_req_t   (icache_ext_sram_req_t),
+        .icache_ext_sram_resp_t  (icache_ext_sram_resp_t)
     ) i_hmr_unit (
         .clk_i (clk_i),
         .rst_ni(rst_ni),
@@ -564,12 +626,16 @@ module cva6_top
         .sys_bus_inputs_i          (noc_resp_sys2hmr),
         .sys_dcache_ext_sram_req_o (dcache_ext_sram_req_hmr2sys),
         .sys_dcache_ext_sram_resp_i(dcache_ext_sram_resp_sys2hmr),
+        .sys_icache_ext_sram_req_o (icache_ext_sram_req_hmr2sys),
+        .sys_icache_ext_sram_resp_i(icache_ext_sram_resp_sys2hmr),
         // Core side ([1:0])
         .core_inputs_o              (hmr2core),
         .core_bus_outputs_i         (noc_req_core2hmr),
         .core_bus_inputs_o          (noc_resp_hmr2core),
         .core_dcache_ext_sram_req_i (dcache_ext_sram_req_core2hmr),
-        .core_dcache_ext_sram_resp_o(dcache_ext_sram_resp_hmr2core)
+        .core_dcache_ext_sram_resp_o(dcache_ext_sram_resp_hmr2core),
+        .core_icache_ext_sram_req_i (icache_ext_sram_req_core2hmr),
+        .core_icache_ext_sram_resp_o(icache_ext_sram_resp_hmr2core)
     );
 
   end else begin

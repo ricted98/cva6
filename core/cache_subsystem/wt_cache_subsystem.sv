@@ -137,7 +137,9 @@ module wt_cache_subsystem
       .mem_rtrn_i    (adapter_icache),
       .mem_data_req_o(icache_adapter_data_req),
       .mem_data_ack_i(adapter_icache_data_ack),
-      .mem_data_o    (icache_adapter)
+      .mem_data_o    (icache_adapter),
+      .icache_ext_sram_req_o (),
+      .icache_ext_sram_resp_i('0)
   );
 
 

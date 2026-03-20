@@ -38,7 +38,11 @@ module cva6_hpdcache_subsystem
     parameter type cmo_req_t = logic,
     parameter type cmo_rsp_t = logic,
     parameter type dcache_ext_sram_req_t = logic,
-    parameter type dcache_ext_sram_resp_t = logic
+    parameter type dcache_ext_sram_resp_t = logic,
+    // I$ external SRAM types
+    parameter bit  IcacheExternalSram = 1'b0,
+    parameter type icache_ext_sram_req_t = logic,
+    parameter type icache_ext_sram_resp_t = logic
 )
 //  }}}
 
@@ -129,10 +133,16 @@ module cva6_hpdcache_subsystem
     output logic [               63:0]       hwpf_status_o,
     //  }}}
 
-    //  External SRAM interface
+    //  External D$ SRAM interface
     //  {{{
     output dcache_ext_sram_req_t  dcache_ext_sram_req_o,
-    input  dcache_ext_sram_resp_t dcache_ext_sram_resp_i
+    input  dcache_ext_sram_resp_t dcache_ext_sram_resp_i,
+    //  }}}
+
+    //  External I$ SRAM interface
+    //  {{{
+    output icache_ext_sram_req_t  icache_ext_sram_req_o,
+    input  icache_ext_sram_resp_t icache_ext_sram_resp_i
     //  }}}
 );
   //  }}}
@@ -155,7 +165,10 @@ module cva6_hpdcache_subsystem
       .icache_drsp_t(icache_drsp_t),
       .icache_req_t(icache_req_t),
       .icache_rtrn_t(icache_rtrn_t),
-      .RdTxId(ICACHE_RDTXID)
+      .RdTxId(ICACHE_RDTXID),
+      .ExternalSram(IcacheExternalSram),
+      .icache_ext_sram_req_t(icache_ext_sram_req_t),
+      .icache_ext_sram_resp_t(icache_ext_sram_resp_t)
   ) i_cva6_icache (
       .clk_i         (clk_i),
       .rst_ni        (rst_ni),
@@ -170,7 +183,9 @@ module cva6_hpdcache_subsystem
       .mem_rtrn_i    (icache_miss_resp),
       .mem_data_req_o(icache_miss_valid),
       .mem_data_ack_i(icache_miss_ready),
-      .mem_data_o    (icache_miss)
+      .mem_data_o    (icache_miss),
+      .icache_ext_sram_req_o (icache_ext_sram_req_o),
+      .icache_ext_sram_resp_i(icache_ext_sram_resp_i)
   );
   //  }}}
 

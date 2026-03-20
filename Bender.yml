@@ -161,6 +161,7 @@ sources:
       - core/cache_subsystem/wt_cache_subsystem.sv
       - core/cache_subsystem/wt_axi_adapter.sv
       - core/cache_subsystem/cva6_icache.sv
+      - core/cache_subsystem/icache_memwrap.sv
       - core/cache_subsystem/tag_cmp.sv
       - core/cache_subsystem/cva6_icache_axi_wrapper.sv
       - core/cache_subsystem/axi_adapter.sv
@@ -242,7 +243,7 @@ sources:
       # DMR / HMR
       - core/dmr_checker.sv
       - core/hmr_unit.sv
-      # CVA6 top-level (with external D$ SRAM)
+      # CVA6 top-level (with external D$/I$ SRAM)
       - core/cva6_top.sv
 
       # Physical Memory Protection

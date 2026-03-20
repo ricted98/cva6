@@ -129,7 +129,9 @@ module cva6_icache_axi_wrapper
       .mem_rtrn_i    (icache_mem_rtrn),
       .mem_data_req_o(icache_mem_data_req),
       .mem_data_ack_i(icache_mem_data_ack),
-      .mem_data_o    (icache_mem_data)
+      .mem_data_o    (icache_mem_data),
+      .icache_ext_sram_req_o (),
+      .icache_ext_sram_resp_i('0)
   );
 
   // --------

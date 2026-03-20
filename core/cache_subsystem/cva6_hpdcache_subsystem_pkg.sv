@@ -92,7 +92,7 @@ package cva6_hpdcache_subsystem_pkg;
   function automatic hpdcache_pkg::hpdcache_cfg_t hpdcacheBuildCfg(
       config_pkg::cva6_cfg_t CVA6Cfg,
       int unsigned NumPorts,
-      logic externalSram = 1'b0
+      logic externalSram = 1'b1
   );
     return hpdcache_pkg::hpdcacheBuildConfig(
         hpdcacheSetUserConfig(CVA6Cfg, NumPorts, externalSram)

@@ -188,6 +188,7 @@ ${CVA6_REPO_DIR}/core/cache_subsystem/wt_dcache_missunit.sv
 ${CVA6_REPO_DIR}/core/cache_subsystem/wt_dcache_wbuffer.sv
 ${CVA6_REPO_DIR}/core/cache_subsystem/wt_dcache.sv
 ${CVA6_REPO_DIR}/core/cache_subsystem/cva6_icache.sv
+${CVA6_REPO_DIR}/core/cache_subsystem/icache_memwrap.sv
 ${CVA6_REPO_DIR}/core/cache_subsystem/wt_cache_subsystem.sv
 ${CVA6_REPO_DIR}/core/cache_subsystem/wt_axi_adapter.sv
 ${CVA6_REPO_DIR}/core/cache_subsystem/tag_cmp.sv
