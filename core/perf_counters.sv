@@ -27,6 +27,7 @@ module perf_counters
 ) (
     input logic clk_i,
     input logic rst_ni,
+    input logic clear_i,
     input logic debug_mode_i,  // debug mode
     // SRAM like interface
     input logic [11:0] addr_i,  // read/write address (up to ariane_pkg::MHPMCounterNum counters possible)
@@ -209,8 +210,13 @@ module perf_counters
       generic_counter_q <= '{default: 0};
       mhpmevent_q       <= '{default: 0};
     end else begin
-      generic_counter_q <= generic_counter_d;
-      mhpmevent_q       <= mhpmevent_d;
+      if (clear_i) begin
+        generic_counter_q <= '{default: 0};
+        mhpmevent_q       <= '{default: 0};
+      end else begin
+        generic_counter_q <= generic_counter_d;
+        mhpmevent_q       <= mhpmevent_d;
+      end
     end
   end
 

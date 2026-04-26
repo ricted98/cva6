@@ -28,6 +28,8 @@ module frontend
     input logic clk_i,
     // Asynchronous reset active low - SUBSYSTEM
     input logic rst_ni,
+    // Synchronous clear active high - SUBSYSTEM
+    input logic clear_i,
     // Next PC when reset - SUBSYSTEM
     input logic [CVA6Cfg.VLEN-1:0] boot_addr_i,
     // Flush branch prediction - zero
@@ -162,6 +164,7 @@ module frontend
   ) i_instr_realign (
       .clk_i              (clk_i),
       .rst_ni             (rst_ni),
+      .clear_i            (clear_i),
       .flush_i            (icache_dreq_o.kill_s2),
       .valid_i            (icache_valid_q),
       .serving_unaligned_o(serving_unaligned),
@@ -433,36 +436,51 @@ module frontend
       btb_q             <= '0;
       bht_q             <= '0;
     end else begin
-      npc_rst_load_q <= 1'b0;
-      npc_q          <= npc_d;
-      speculative_q  <= speculative_d;
-      icache_valid_q <= icache_dreq_i.valid;
-      if (icache_dreq_i.valid) begin
-        icache_data_q  <= icache_data;
-        icache_vaddr_q <= icache_dreq_i.vaddr;
-        if (CVA6Cfg.RVH) begin
-          icache_gpaddr_q <= icache_dreq_i.ex.tval2[CVA6Cfg.GPLEN-1:0];
-          icache_tinst_q  <= icache_dreq_i.ex.tinst;
-          icache_gva_q    <= icache_dreq_i.ex.gva;
-        end else begin
-          icache_gpaddr_q <= 'b0;
-          icache_tinst_q  <= 'b0;
-          icache_gva_q    <= 1'b0;
-        end
+      if (clear_i) begin
+        npc_rst_load_q    <= 1'b1;
+        npc_q             <= '0;
+        speculative_q     <= '0;
+        icache_data_q     <= '0;
+        icache_valid_q    <= 1'b0;
+        icache_vaddr_q    <= 'b0;
+        icache_gpaddr_q   <= 'b0;
+        icache_tinst_q    <= 'b0;
+        icache_gva_q      <= 1'b0;
+        icache_ex_valid_q <= ariane_pkg::FE_NONE;
+        btb_q             <= '0;
+        bht_q             <= '0;
+      end else begin
+        npc_rst_load_q <= 1'b0;
+        npc_q          <= npc_d;
+        speculative_q  <= speculative_d;
+        icache_valid_q <= icache_dreq_i.valid;
+        if (icache_dreq_i.valid) begin
+          icache_data_q  <= icache_data;
+          icache_vaddr_q <= icache_dreq_i.vaddr;
+          if (CVA6Cfg.RVH) begin
+            icache_gpaddr_q <= icache_dreq_i.ex.tval2[CVA6Cfg.GPLEN-1:0];
+            icache_tinst_q  <= icache_dreq_i.ex.tinst;
+            icache_gva_q    <= icache_dreq_i.ex.gva;
+          end else begin
+            icache_gpaddr_q <= 'b0;
+            icache_tinst_q  <= 'b0;
+            icache_gva_q    <= 1'b0;
+          end
 
-        // Map the only three exceptions which can occur in the frontend to a two bit enum
-        if (CVA6Cfg.MmuPresent && icache_dreq_i.ex.cause == riscv::INSTR_GUEST_PAGE_FAULT) begin
-          icache_ex_valid_q <= ariane_pkg::FE_INSTR_GUEST_PAGE_FAULT;
-        end else if (CVA6Cfg.MmuPresent && icache_dreq_i.ex.cause == riscv::INSTR_PAGE_FAULT) begin
-          icache_ex_valid_q <= ariane_pkg::FE_INSTR_PAGE_FAULT;
-        end else if (icache_dreq_i.ex.cause == riscv::INSTR_ACCESS_FAULT) begin
-          icache_ex_valid_q <= ariane_pkg::FE_INSTR_ACCESS_FAULT;
-        end else begin
-          icache_ex_valid_q <= ariane_pkg::FE_NONE;
+          // Map the only three exceptions which can occur in the frontend to a two bit enum
+          if (CVA6Cfg.MmuPresent && icache_dreq_i.ex.cause == riscv::INSTR_GUEST_PAGE_FAULT) begin
+            icache_ex_valid_q <= ariane_pkg::FE_INSTR_GUEST_PAGE_FAULT;
+          end else if (CVA6Cfg.MmuPresent && icache_dreq_i.ex.cause == riscv::INSTR_PAGE_FAULT) begin
+            icache_ex_valid_q <= ariane_pkg::FE_INSTR_PAGE_FAULT;
+          end else if (icache_dreq_i.ex.cause == riscv::INSTR_ACCESS_FAULT) begin
+            icache_ex_valid_q <= ariane_pkg::FE_INSTR_ACCESS_FAULT;
+          end else begin
+            icache_ex_valid_q <= ariane_pkg::FE_NONE;
+          end
+          // save the uppermost prediction
+          btb_q <= btb_prediction[CVA6Cfg.INSTR_PER_FETCH-1];
+          bht_q <= bht_prediction[CVA6Cfg.INSTR_PER_FETCH-1];
         end
-        // save the uppermost prediction
-        btb_q <= btb_prediction[CVA6Cfg.INSTR_PER_FETCH-1];
-        bht_q <= bht_prediction[CVA6Cfg.INSTR_PER_FETCH-1];
       end
     end
   end
@@ -477,6 +495,7 @@ module frontend
     ) i_ras (
         .clk_i,
         .rst_ni,
+        .clear_i,
         .flush_bp_i(flush_bp_i),
         .push_i(ras_push),
         .pop_i(ras_pop),
@@ -503,6 +522,7 @@ module frontend
     ) i_btb (
         .clk_i,
         .rst_ni,
+        .clear_i,
         .flush_bp_i      (flush_bp_i),
         .debug_mode_i,
         .vpc_i           (vpc_btb),
@@ -521,6 +541,7 @@ module frontend
     ) i_bht (
         .clk_i,
         .rst_ni,
+        .clear_i,
         .flush_bp_i      (flush_bp_i),
         .debug_mode_i,
         .vpc_i           (vpc_bht),
@@ -534,6 +555,7 @@ module frontend
     ) i_bht (
         .clk_i,
         .rst_ni,
+        .clear_i,
         .flush_i         (flush_bp_i),
         .vpc_i           (icache_vaddr_q),
         .bht_update_i    (bht_update),
@@ -570,6 +592,7 @@ module frontend
   ) i_instr_queue (
       .clk_i              (clk_i),
       .rst_ni             (rst_ni),
+      .clear_i            (clear_i),
       .flush_i            (flush_i),
       .instr_i            (instr),                 // from re-aligner
       .addr_i             (addr),                  // from re-aligner

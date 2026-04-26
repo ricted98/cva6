@@ -53,6 +53,8 @@ module cva6_hpdcache_subsystem
     input logic clk_i,
     // Asynchronous reset active low - SUBSYSTEM
     input logic rst_ni,
+    // Synchronous clear active high - SUBSYSTEM
+    input logic clear_i,
 
     //  AXI port to upstream memory/peripherals
     //  {{{
@@ -169,20 +171,21 @@ module cva6_hpdcache_subsystem
       .icache_sram_req_t(icache_sram_req_t),
       .icache_sram_resp_t(icache_sram_resp_t)
   ) i_cva6_icache (
-      .clk_i             (clk_i),
-      .rst_ni            (rst_ni),
-      .flush_i           (icache_flush_i),
-      .en_i              (icache_en_i),
-      .miss_o            (icache_miss_o),
-      .areq_i            (icache_areq_i),
-      .areq_o            (icache_areq_o),
-      .dreq_i            (icache_dreq_i),
-      .dreq_o            (icache_dreq_o),
-      .mem_rtrn_vld_i    (icache_miss_resp_valid),
-      .mem_rtrn_i        (icache_miss_resp),
-      .mem_data_req_o    (icache_miss_valid),
-      .mem_data_ack_i    (icache_miss_ready),
-      .mem_data_o        (icache_miss),
+      .clk_i         (clk_i),
+      .rst_ni        (rst_ni),
+      .clear_i       (clear_i),
+      .flush_i       (icache_flush_i),
+      .en_i          (icache_en_i),
+      .miss_o        (icache_miss_o),
+      .areq_i        (icache_areq_i),
+      .areq_o        (icache_areq_o),
+      .dreq_i        (icache_dreq_i),
+      .dreq_o        (icache_dreq_o),
+      .mem_rtrn_vld_i(icache_miss_resp_valid),
+      .mem_rtrn_i    (icache_miss_resp),
+      .mem_data_req_o(icache_miss_valid),
+      .mem_data_ack_i(icache_miss_ready),
+      .mem_data_o    (icache_miss),
       .icache_sram_req_o (icache_sram_req_o),
       .icache_sram_resp_i(icache_sram_resp_i)
   );
@@ -270,6 +273,7 @@ module cva6_hpdcache_subsystem
   ) i_dcache (
       .clk_i(clk_i),
       .rst_ni(rst_ni),
+      .clear_i(clear_i),
       .dcache_enable_i(dcache_enable_i),
       .dcache_flush_i(dcache_flush_i),
       .dcache_flush_ack_o(dcache_flush_ack_o),
@@ -329,8 +333,8 @@ module cva6_hpdcache_subsystem
     localparam NUM_PORTS_ADAPTER = 4;
     localparam NUM_PORTS_ADAPTER_WIDTH = $clog2(NUM_PORTS_ADAPTER);
     // Adapter HPDC-L1.5 Request Ports type
-    // 0: Maximum priority 
-    // NUM_PORTS_ADAPTER - 1 : Less priority 
+    // 0: Maximum priority
+    // NUM_PORTS_ADAPTER - 1 : Less priority
     localparam [NUM_PORTS_ADAPTER_WIDTH-1:0] ICACHE_PORT = 0;
     localparam [NUM_PORTS_ADAPTER_WIDTH-1:0] DCACHE_READ_PORT = 1;
     localparam [NUM_PORTS_ADAPTER_WIDTH-1:0] DCACHE_WRITE_PORT = 2;
@@ -370,6 +374,7 @@ module cva6_hpdcache_subsystem
     ) i_l15_adapter (
         .clk_i,
         .rst_ni,
+        .clear_i,
 
         .icache_miss_valid_i(icache_miss_valid),
         .icache_miss_ready_o(icache_miss_ready),
@@ -433,6 +438,7 @@ module cva6_hpdcache_subsystem
     ) i_axi_arbiter (
         .clk_i,
         .rst_ni,
+        .clear_i,
 
         .icache_miss_valid_i(icache_miss_valid),
         .icache_miss_ready_o(icache_miss_ready),

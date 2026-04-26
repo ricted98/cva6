@@ -32,6 +32,7 @@ module cva6_ptw
 ) (
     input logic clk_i,  // Clock
     input logic rst_ni,  // Asynchronous reset active low
+    input logic clear_i,  // Synchronous clear active high
     input logic flush_i,  // flush everything, we need to do this because
                           // actually everything we do is speculative at this stage
                           // e.g.: there could be a CSR instruction that changes everything
@@ -676,25 +677,46 @@ module cva6_ptw
         tlb_update_vmid_q <= '0;
       end
     end else begin
-      state_q           <= state_d;
-      ptw_pptr_q        <= ptw_pptr_n;
-      is_instr_ptw_q    <= is_instr_ptw_n;
-      ptw_lvl_q         <= ptw_lvl_n;
-      tag_valid_q       <= tag_valid_n;
-      kill_req_q        <= kill_req_n;
-      tlb_update_asid_q <= tlb_update_asid_n;
-      vaddr_q           <= vaddr_n;
-      global_mapping_q  <= global_mapping_n;
-      //data_rdata_q      <= req_port_i.data_rdata;
-      data_rdata_q      <= endian_data;
-      data_rvalid_q     <= req_port_i.data_rvalid;
+      if (clear_i) begin
+        state_q           <= IDLE;
+        is_instr_ptw_q    <= 1'b0;
+        ptw_lvl_q         <= '0;
+        tag_valid_q       <= 1'b0;
+        kill_req_q        <= 1'b0;
+        tlb_update_asid_q <= '0;
+        vaddr_q           <= '0;
+        ptw_pptr_q        <= '0;
+        global_mapping_q  <= 1'b0;
+        data_rdata_q      <= '0;
+        data_rvalid_q     <= 1'b0;
+        if (CVA6Cfg.RVH) begin
+          gpaddr_q          <= '0;
+          gptw_pptr_q       <= '0;
+          ptw_stage_q       <= S_STAGE;
+          gpte_q            <= '0;
+          tlb_update_vmid_q <= '0;
+        end
+      end else begin
+        state_q           <= state_d;
+        ptw_pptr_q        <= ptw_pptr_n;
+        is_instr_ptw_q    <= is_instr_ptw_n;
+        ptw_lvl_q         <= ptw_lvl_n;
+        tag_valid_q       <= tag_valid_n;
+        kill_req_q        <= kill_req_n;
+        tlb_update_asid_q <= tlb_update_asid_n;
+        vaddr_q           <= vaddr_n;
+        global_mapping_q  <= global_mapping_n;
+        //data_rdata_q      <= req_port_i.data_rdata;
+        data_rdata_q      <= endian_data;
+        data_rvalid_q     <= req_port_i.data_rvalid;
 
-      if (CVA6Cfg.RVH) begin
-        gpaddr_q          <= gpaddr_n;
-        gptw_pptr_q       <= gptw_pptr_n;
-        ptw_stage_q       <= ptw_stage_d;
-        gpte_q            <= gpte_d;
-        tlb_update_vmid_q <= tlb_update_vmid_n;
+        if (CVA6Cfg.RVH) begin
+          gpaddr_q          <= gpaddr_n;
+          gptw_pptr_q       <= gptw_pptr_n;
+          ptw_stage_q       <= ptw_stage_d;
+          gpte_q            <= gpte_d;
+          tlb_update_vmid_q <= tlb_update_vmid_n;
+        end
       end
     end
   end

@@ -1,3 +1,4 @@
+
 // Copyright 2018 ETH Zurich and University of Bologna.
 // Copyright and related rights are licensed under the Solderpad Hardware
 // License, Version 0.51 (the "License"); you may not use this file except in
@@ -20,6 +21,7 @@ module macro_decoder #(
     input  logic [31:0] instr_i,
     input  logic        clk_i,                      // Clock
     input  logic        rst_ni,                     // Synchronous reset
+    input  logic        clear_i,                    // Synchronous clear
     input  logic        is_macro_instr_i,           // Instruction is of macro extension
     input  logic        illegal_instr_i,            // From compressed decoder
     input  logic        is_compressed_i,
@@ -755,11 +757,19 @@ module macro_decoder #(
       reg_numbers_q <= '0;
       store_reg_q <= '0;
     end else begin
-      state_q <= state_d;
-      offset_q <= offset_d;
-      reg_numbers_q <= reg_numbers_d;
-      store_reg_q <= store_reg_d;
-      popretz_inst_q <= popretz_inst_d;
+      if (clear_i) begin
+        state_q <= IDLE;
+        offset_q <= '0;
+        popretz_inst_q <= '0;
+        reg_numbers_q <= '0;
+        store_reg_q <= '0;
+      end else begin
+        state_q <= state_d;
+        offset_q <= offset_d;
+        reg_numbers_q <= reg_numbers_d;
+        store_reg_q <= store_reg_d;
+        popretz_inst_q <= popretz_inst_d;
+      end
     end
   end
 endmodule

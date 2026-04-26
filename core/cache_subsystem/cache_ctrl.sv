@@ -30,6 +30,7 @@ module cache_ctrl
 ) (
     input logic clk_i,  // Clock
     input logic rst_ni,  // Asynchronous reset active low
+    input logic clear_i,  // Synchronous clear active high
     input logic flush_i,
     input logic bypass_i,  // enable cache
     output logic busy_o,
@@ -461,9 +462,15 @@ module cache_ctrl
       mem_req_q <= '0;
       hit_way_q <= '0;
     end else begin
-      state_q   <= state_d;
-      mem_req_q <= mem_req_d;
-      hit_way_q <= hit_way_d;
+      if (clear_i) begin
+        state_q   <= IDLE;
+        mem_req_q <= '0;
+        hit_way_q <= '0;
+      end else begin
+        state_q   <= state_d;
+        mem_req_q <= mem_req_d;
+        hit_way_q <= hit_way_d;
+      end
     end
   end
 

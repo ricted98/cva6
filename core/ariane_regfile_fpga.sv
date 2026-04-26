@@ -35,6 +35,7 @@ module ariane_regfile_fpga #(
     // clock and reset
     input  logic                                             clk_i,
     input  logic                                             rst_ni,
+    input  logic                                             clear_i,
     // disable clock gates for testing
     input  logic                                             test_en_i,
     // read port
@@ -96,9 +97,14 @@ module ariane_regfile_fpga #(
       mem_block_sel_q <= '0;
       raddr_q <= '0;
     end else begin
-      mem_block_sel_q <= mem_block_sel;
-      if (CVA6Cfg.FpgaAlteraEn) raddr_q <= raddr_i;
-      else raddr_q <= '0;
+      if (clear_i) begin
+        mem_block_sel_q <= '0;
+        raddr_q <= '0;
+      end else begin
+        mem_block_sel_q <= mem_block_sel;
+        if (CVA6Cfg.FpgaAlteraEn) raddr_q <= raddr_i;
+        else raddr_q <= '0;
+      end
     end
   end
 
@@ -107,18 +113,29 @@ module ariane_regfile_fpga #(
   logic [NR_READ_PORTS-1:0][DATA_WIDTH-1:0] mem_read_sync[CVA6Cfg.NrCommitPorts];
   for (genvar j = 0; j < CVA6Cfg.NrCommitPorts; j++) begin : regfile_ram_block
     always_ff @(posedge clk_i) begin
-      if (we_i[j] && ~waddr_i[j] != 0) begin
-        mem[j][waddr_i[j]] <= wdata_i[j];
-        if (CVA6Cfg.FpgaAlteraEn)
-          wdata_reg[j] <= wdata_i[j];  // register data written in case is needed to read next cycle
-        else wdata_reg[j] <= '0;
-      end
-      if (CVA6Cfg.FpgaAlteraEn) begin
-        for (int k = 0; k < NR_READ_PORTS; k++) begin : block_read
-          mem_read_sync[j][k] = mem[j][raddr_i[k]];  // synchronous RAM
-          read_after_write[k] <= '0;
-          if (waddr_i[j] == raddr_i[k])
-            read_after_write[k] <= we_i[j] && ~waddr_i[j] != 0; // Identify if we need to read the content that was written
+      if (clear_i) begin
+        for (int k = 0; k < NUM_WORDS; k++)
+          mem[j][k] <= '0;
+        wdata_reg[j] <= '0;
+        if (CVA6Cfg.FpgaAlteraEn) begin
+          for (int k = 0; k < NR_READ_PORTS; k++)
+            mem_read_sync[j][k] <= '0;
+          read_after_write <= '0;
+        end
+      end else begin
+        if (we_i[j] && ~waddr_i[j] != 0) begin
+          mem[j][waddr_i[j]] <= wdata_i[j];
+          if (CVA6Cfg.FpgaAlteraEn)
+            wdata_reg[j] <= wdata_i[j];  // register data written in case is needed to read next cycle
+          else wdata_reg[j] <= '0;
+        end
+        if (CVA6Cfg.FpgaAlteraEn) begin
+          for (int k = 0; k < NR_READ_PORTS; k++) begin : block_read
+            mem_read_sync[j][k] = mem[j][raddr_i[k]];  // synchronous RAM
+            read_after_write[k] <= '0;
+            if (waddr_i[j] == raddr_i[k])
+              read_after_write[k] <= we_i[j] && ~waddr_i[j] != 0; // Identify if we need to read the content that was written
+          end
         end
       end
     end

@@ -31,6 +31,8 @@ module load_unit
     input logic clk_i,
     // Asynchronous reset active low - SUBSYSTEM
     input logic rst_ni,
+    // Synchronous clear active high - SUBSYSTEM
+    input logic clear_i,
     // Flush signal - CONTROLLER
     input logic flush_i,
     // Load request is valid - LSU_BYPASS
@@ -179,11 +181,18 @@ module load_unit
       ldbuf_last_id_q <= '0;
       ldbuf_q         <= '0;
     end else begin
-      ldbuf_flushed_q <= ldbuf_flushed_d;
-      ldbuf_valid_q   <= ldbuf_valid_d;
-      if (ldbuf_w) begin
-        ldbuf_last_id_q       <= ldbuf_windex;
-        ldbuf_q[ldbuf_windex] <= ldbuf_wdata;
+      if (clear_i) begin
+        ldbuf_flushed_q <= '0;
+        ldbuf_valid_q   <= '0;
+        ldbuf_last_id_q <= '0;
+        ldbuf_q         <= '0;
+      end else begin
+        ldbuf_flushed_q <= ldbuf_flushed_d;
+        ldbuf_valid_q   <= ldbuf_valid_d;
+        if (ldbuf_w) begin
+          ldbuf_last_id_q       <= ldbuf_windex;
+          ldbuf_q[ldbuf_windex] <= ldbuf_wdata;
+        end
       end
     end
   end
@@ -498,7 +507,8 @@ module load_unit
     if (~rst_ni) begin
       state_q <= IDLE;
     end else begin
-      state_q <= state_d;
+      if (clear_i) state_q <= IDLE;
+      else state_q <= state_d;
     end
   end
 

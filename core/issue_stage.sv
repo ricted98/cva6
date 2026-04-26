@@ -33,6 +33,8 @@ module issue_stage
     input logic clk_i,
     // Asynchronous reset active low - SUBSYSTEM
     input logic rst_ni,
+    // Synchronous clear active high - SUBSYSTEM
+    input logic clear_i,
     // Is scoreboard full - PERF_COUNTERS
     output logic sb_full_o,
     // Prevent from issuing - CONTROLLER
@@ -210,6 +212,7 @@ module issue_stage
   ) i_scoreboard (
       .clk_i,
       .rst_ni,
+      .clear_i,
       .sb_full_o               (sb_full_o),
       .flush_unissued_instr_i,
       .flush_i,
@@ -257,6 +260,7 @@ module issue_stage
   ) i_issue_read_operands (
       .clk_i,
       .rst_ni,
+      .clear_i,
       .flush_i                 (flush_unissued_instr_i),
       .stall_i,
       .issue_instr_i           (issue_instr_sb_iro),

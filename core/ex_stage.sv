@@ -38,6 +38,8 @@ module ex_stage
     input logic clk_i,
     // Asynchronous reset active low - SUBSYSTEM
     input logic rst_ni,
+    // Synchronous clear active high - SUBSYSTEM
+    input logic clear_i,
     // Fetch flush request - CONTROLLER
     input logic flush_i,
     // Debug mode is enabled - CSR_REGFILE
@@ -373,6 +375,7 @@ module ex_stage
   ) csr_buffer_i (
       .clk_i,
       .rst_ni,
+      .clear_i,
       .flush_i,
       .fu_data_i   (one_cycle_data),
       .csr_valid_i (|csr_valid_i),
@@ -426,6 +429,7 @@ module ex_stage
   ) i_mult (
       .clk_i,
       .rst_ni,
+      .clear_i,
       .flush_i,
       .mult_valid_i   (|mult_valid_i),
       .fu_data_i      (mult_data),
@@ -461,6 +465,7 @@ module ex_stage
       ) fpu_i (
           .clk_i,
           .rst_ni,
+          .clear_i,
           .flush_i,
           .fpu_valid_i(|fpu_valid_i),
           .fpu_ready_o,
@@ -549,6 +554,7 @@ module ex_stage
   ) lsu_i (
       .clk_i,
       .rst_ni,
+      .clear_i,
       .flush_i,
       .stall_st_pending_i,
       .no_st_pending_o,
@@ -668,7 +674,7 @@ module ex_stage
           current_instruction_is_hfence_gvma <= 1'b0;
         end else begin
           // TODO handle this with superscalar (issue only one instruction in this case?)
-          if (flush_i) begin
+          if (flush_i | clear_i) begin
             current_instruction_is_sfence_vma  <= 1'b0;
             current_instruction_is_hfence_vvma <= 1'b0;
             current_instruction_is_hfence_gvma <= 1'b0;
@@ -688,7 +694,7 @@ module ex_stage
         if (~rst_ni) begin
           current_instruction_is_sfence_vma <= 1'b0;
         end else begin
-          if (flush_i) begin
+          if (flush_i | clear_i) begin
             current_instruction_is_sfence_vma <= 1'b0;
           end else if (fu_data_i[0].operation == SFENCE_VMA && |csr_valid_i) begin
             current_instruction_is_sfence_vma <= 1'b1;
@@ -705,11 +711,18 @@ module ex_stage
           vaddr_to_be_flushed  <= '0;
           gpaddr_to_be_flushed <= '0;
           // if the current instruction in EX_STAGE is a sfence.vma, in the next cycle no writes will happen
-        end else if ((~(current_instruction_is_sfence_vma || current_instruction_is_hfence_vvma || current_instruction_is_hfence_gvma)) && (~((fu_data_i[0].operation == SFENCE_VMA || fu_data_i[0].operation == HFENCE_VVMA || fu_data_i[0].operation == HFENCE_GVMA ) && |csr_valid_i))) begin
-          vaddr_to_be_flushed  <= rs1_forwarding;
-          gpaddr_to_be_flushed <= {rs1_forwarding[CVA6Cfg.GPLEN-3:0], 2'b00};
-          asid_to_be_flushed   <= rs2_forwarding[CVA6Cfg.ASID_WIDTH-1:0];
-          vmid_to_be_flushed   <= rs2_forwarding[CVA6Cfg.VMID_WIDTH-1:0];
+        end else begin
+          if (clear_i) begin
+            vmid_to_be_flushed   <= '0;
+            asid_to_be_flushed   <= '0;
+            vaddr_to_be_flushed  <= '0;
+            gpaddr_to_be_flushed <= '0;
+          end else if ((~(current_instruction_is_sfence_vma || current_instruction_is_hfence_vvma || current_instruction_is_hfence_gvma)) && (~((fu_data_i[0].operation == SFENCE_VMA || fu_data_i[0].operation == HFENCE_VVMA || fu_data_i[0].operation == HFENCE_GVMA ) && |csr_valid_i))) begin
+              vaddr_to_be_flushed  <= rs1_forwarding;
+              gpaddr_to_be_flushed <= {rs1_forwarding[CVA6Cfg.GPLEN-3:0], 2'b00};
+              asid_to_be_flushed   <= rs2_forwarding[CVA6Cfg.ASID_WIDTH-1:0];
+              vmid_to_be_flushed   <= rs2_forwarding[CVA6Cfg.VMID_WIDTH-1:0];
+          end
         end
       end
     end else begin
@@ -721,9 +734,14 @@ module ex_stage
           asid_to_be_flushed  <= '0;
           vaddr_to_be_flushed <= '0;
           // if the current instruction in EX_STAGE is a sfence.vma, in the next cycle no writes will happen
-        end else if ((~current_instruction_is_sfence_vma) && (~((fu_data_i[0].operation == SFENCE_VMA) && |csr_valid_i))) begin
-          vaddr_to_be_flushed <= rs1_forwarding;
-          asid_to_be_flushed  <= rs2_forwarding[CVA6Cfg.ASID_WIDTH-1:0];
+        end else begin
+          if (clear_i) begin
+            asid_to_be_flushed  <= '0;
+            vaddr_to_be_flushed <= '0;
+          end else if ((~current_instruction_is_sfence_vma) && (~((fu_data_i[0].operation == SFENCE_VMA) && |csr_valid_i))) begin
+            vaddr_to_be_flushed <= rs1_forwarding;
+            asid_to_be_flushed  <= rs2_forwarding[CVA6Cfg.ASID_WIDTH-1:0];
+          end
         end
       end
     end

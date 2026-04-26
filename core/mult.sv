@@ -10,6 +10,8 @@ module mult
     input  logic                                 clk_i,
     // Asynchronous reset active low - SUBSYSTEM
     input  logic                                 rst_ni,
+    // Synchronous clear active high - SUBSYSTEM
+    input  logic                                 clear_i,
     // Flush - CONTROLLER
     input  logic                                 flush_i,
     // FU data needed to execute instruction - ISSUE_STAGE
@@ -60,6 +62,7 @@ module mult
   ) i_multiplier (
       .clk_i,
       .rst_ni,
+      .clear_i,
       .trans_id_i     (fu_data_i.trans_id),
       .operation_i    (fu_data_i.operation),
       .operand_a_i    (fu_data_i.operand_a),
@@ -128,6 +131,7 @@ module mult
   ) i_div (
       .clk_i    (clk_i),
       .rst_ni   (rst_ni),
+      .clear_i  (clear_i),
       .id_i     (fu_data_i.trans_id),
       .op_a_i   (operand_a),
       .op_b_i   (operand_b),
@@ -152,7 +156,8 @@ module mult
     if (~rst_ni) begin
       word_op_q <= '0;
     end else begin
-      word_op_q <= word_op_d;
+      if (clear_i) word_op_q <= '0;
+      else word_op_q <= word_op_d;
     end
   end
 endmodule

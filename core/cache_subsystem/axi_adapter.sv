@@ -26,6 +26,7 @@ module axi_adapter #(
 ) (
     input logic clk_i,  // Clock
     input logic rst_ni, // Asynchronous reset active low
+    input logic clear_i, // Synchronous clear active high
 
     input logic req_i,
     input ariane_pkg::ad_req_t type_i,
@@ -469,14 +470,25 @@ module axi_adapter #(
       size_q               <= '0;
       outstanding_aw_cnt_q <= '0;
     end else begin
-      state_q              <= state_d;
-      cnt_q                <= cnt_d;
-      cache_line_q         <= cache_line_d;
-      addr_offset_q        <= addr_offset_d;
-      id_q                 <= id_d;
-      amo_q                <= amo_d;
-      size_q               <= size_d;
-      outstanding_aw_cnt_q <= outstanding_aw_cnt_d;
+      if (clear_i) begin
+        state_q              <= IDLE;
+        cnt_q                <= '0;
+        cache_line_q         <= '0;
+        addr_offset_q        <= '0;
+        id_q                 <= '0;
+        amo_q                <= ariane_pkg::AMO_NONE;
+        size_q               <= '0;
+        outstanding_aw_cnt_q <= '0;
+      end else begin
+        state_q              <= state_d;
+        cnt_q                <= cnt_d;
+        cache_line_q         <= cache_line_d;
+        addr_offset_q        <= addr_offset_d;
+        id_q                 <= id_d;
+        amo_q                <= amo_d;
+        size_q               <= size_d;
+        outstanding_aw_cnt_q <= outstanding_aw_cnt_d;
+      end
     end
   end
 

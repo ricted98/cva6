@@ -27,6 +27,8 @@ module store_unit
     input logic clk_i,
     // Asynchronous reset active low - SUBSYSTEM
     input logic rst_ni,
+    // Synchronous clear active high - SUBSYSTEM
+    input logic clear_i,
     // Flush - CONTROLLER
     input logic flush_i,
     // TO_BE_COMPLETED - TO_BE_COMPLETED
@@ -330,6 +332,7 @@ module store_unit
   ) store_buffer_i (
       .clk_i,
       .rst_ni,
+      .clear_i,
       .flush_i,
       .stall_st_pending_i,
       .no_st_pending_o,
@@ -362,6 +365,7 @@ module store_unit
     ) i_amo_buffer (
         .clk_i,
         .rst_ni,
+        .clear_i,
         .flush_i,
         .valid_i           (amo_buffer_valid),
         .ready_o           (amo_buffer_ready),
@@ -392,13 +396,23 @@ module store_unit
       amo_op_q       <= AMO_NONE;
       cbo_op_q       <= ariane_pkg::CBO_NONE;
     end else begin
-      state_q        <= state_d;
-      st_be_q        <= st_be_n;
-      st_data_q      <= st_data_n;
-      trans_id_q     <= trans_id_n;
-      st_data_size_q <= st_data_size_n;
-      amo_op_q       <= amo_op_d;
-      cbo_op_q       <= cbo_op_d;
+      if (clear_i) begin
+        state_q        <= IDLE;
+        st_be_q        <= '0;
+        st_data_q      <= '0;
+        st_data_size_q <= '0;
+        trans_id_q     <= '0;
+        amo_op_q       <= AMO_NONE;
+        cbo_op_q       <= ariane_pkg::CBO_NONE;
+      end else begin
+        state_q        <= state_d;
+        st_be_q        <= st_be_n;
+        st_data_q      <= st_data_n;
+        trans_id_q     <= trans_id_n;
+        st_data_size_q <= st_data_size_n;
+        amo_op_q       <= amo_op_d;
+        cbo_op_q       <= cbo_op_d;
+      end
     end
   end
 

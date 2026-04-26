@@ -69,6 +69,7 @@ module cva6_hpdcache_subsystem_l15_adapter
 (
     input logic clk_i,
     input logic rst_ni,
+    input logic clear_i,
 
     //  Interfaces from/to I$
     //  {{{
@@ -163,6 +164,7 @@ module cva6_hpdcache_subsystem_l15_adapter
   ) i_icache_miss_req_fifo (
       .clk_i,
       .rst_ni,
+      .clear_i,
 
       .w_i    (icache_miss_req_w),
       .wok_o  (icache_miss_req_wok),
@@ -284,6 +286,7 @@ module cva6_hpdcache_subsystem_l15_adapter
   ) i_l15_req_arbiter (
       .clk_i,
       .rst_ni,
+      .clear_i,
       //Request
       .mem_req_ready_o(mem_req_ready),
       .mem_req_valid_i(mem_req_valid),
@@ -418,6 +421,7 @@ module cva6_hpdcache_subsystem_l15_adapter
 
       .clk_i,
       .rst_ni,
+      .clear_i,
 
       //HPDC to Adapter
       .req_ready_o       (mem_req_ready_arb),  // L1.5 is ready to receive

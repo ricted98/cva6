@@ -21,8 +21,11 @@ module ras #(
 ) (
     // Subsystem Clock - SUBSYSTEM
     input logic clk_i,
+
     // Asynchronous reset active low - SUBSYSTEM
     input logic rst_ni,
+    // Synchronous clear active high - SUBSYSTEM
+    input logic clear_i,
     // Branch prediction flush request - zero
     input logic flush_bp_i,
     // Push address in RAS - FRONTEND
@@ -73,7 +76,10 @@ module ras #(
     if (~rst_ni) begin
       stack_q <= '0;
     end else begin
-      stack_q <= stack_d;
+      if (clear_i)
+        stack_q <= '0;
+      else
+        stack_q <= stack_d;
     end
   end
 endmodule

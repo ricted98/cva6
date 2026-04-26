@@ -9,6 +9,7 @@ module trigger_module
 ) (
     input logic clk_i,
     input logic rst_ni,
+    input logic clear_i,
     input scoreboard_entry_t commit_instr_i,
     input logic [CVA6Cfg.NrCommitPorts-1:0] commit_ack_i,
     input exception_t ex_i,
@@ -473,22 +474,45 @@ module trigger_module
         end
       end
     end else begin
-      if (CVA6Cfg.SDTRIG) begin
-        trigger_type_q        <= trigger_type_d;
-        tselect_q             <= tselect_d;
-        tdata2_q              <= tdata2_d;
-        icount32_tdata1_q     <= icount32_tdata1_d;
-        mcontrol6_32_tdata1_q <= mcontrol6_32_tdata1_d;
-        etrigger32_tdata1_q   <= etrigger32_tdata1_d;
-        itrigger32_tdata1_q   <= itrigger32_tdata1_d;
-        textra32_tdata3_q     <= textra32_tdata3_d;
-        textra64_tdata3_q     <= textra64_tdata3_d;
-        mcontrol6_debug_q     <= mcontrol6_debug_d;
-        break_from_trigger_q  <= break_from_trigger_d;
-        debug_from_trigger_q  <= debug_from_trigger_d;
-        in_trap_handler_q     <= in_trap_handler_d;
-        e_matched_q           <= e_matched_d;
-        mret_reg_q            <= mret_reg_d;
+      if (clear_i) begin
+        if (CVA6Cfg.SDTRIG) begin
+          tselect_q <= '0;
+          mcontrol6_debug_q <= 1'b0;
+          e_matched_q <= 1'b0;
+          mret_reg_q <= 1'b0;
+          break_from_trigger_q <= 0;
+          debug_from_trigger_q <= 0;
+          in_trap_handler_q <= 0;
+          for (int i = 0; i < N_Triggers; ++i) begin
+            trigger_type_q[i]          <= '0;
+            icount32_tdata1_q[i]       <= '0;
+            icount32_tdata1_q[i].count <= 1;
+            mcontrol6_32_tdata1_q[i]   <= '0;
+            textra32_tdata3_q[i]       <= '0;
+            textra64_tdata3_q[i]       <= '0;
+            tdata2_q[i]                <= '0;
+            etrigger32_tdata1_q[i]     <= '0;
+            itrigger32_tdata1_q[i]     <= '0;
+          end
+        end
+      end else begin
+        if (CVA6Cfg.SDTRIG) begin
+          trigger_type_q        <= trigger_type_d;
+          tselect_q             <= tselect_d;
+          tdata2_q              <= tdata2_d;
+          icount32_tdata1_q     <= icount32_tdata1_d;
+          mcontrol6_32_tdata1_q <= mcontrol6_32_tdata1_d;
+          etrigger32_tdata1_q   <= etrigger32_tdata1_d;
+          itrigger32_tdata1_q   <= itrigger32_tdata1_d;
+          textra32_tdata3_q     <= textra32_tdata3_d;
+          textra64_tdata3_q     <= textra64_tdata3_d;
+          mcontrol6_debug_q     <= mcontrol6_debug_d;
+          break_from_trigger_q  <= break_from_trigger_d;
+          debug_from_trigger_q  <= debug_from_trigger_d;
+          in_trap_handler_q     <= in_trap_handler_d;
+          e_matched_q           <= e_matched_d;
+          mret_reg_q            <= mret_reg_d;
+        end
       end
     end
   end

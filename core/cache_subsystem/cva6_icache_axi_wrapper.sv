@@ -29,6 +29,7 @@ module cva6_icache_axi_wrapper
 ) (
     input logic             clk_i,
     input logic             rst_ni,
+    input logic             clear_i,
     input riscv::priv_lvl_t priv_lvl_i,
 
     input logic flush_i,  // flush the icache, flush and kill have to be asserted together
@@ -116,20 +117,21 @@ module cva6_icache_axi_wrapper
       .icache_rtrn_t(icache_rtrn_t),
       .RdTxId(0)
   ) i_cva6_icache (
-      .clk_i             (clk_i),
-      .rst_ni            (rst_ni),
-      .flush_i           (flush_i),
-      .en_i              (en_i),
-      .miss_o            (miss_o),
-      .areq_i            (areq_i),
-      .areq_o            (areq_o),
-      .dreq_i            (dreq_i),
-      .dreq_o            (dreq_o),
-      .mem_rtrn_vld_i    (icache_mem_rtrn_vld),
-      .mem_rtrn_i        (icache_mem_rtrn),
-      .mem_data_req_o    (icache_mem_data_req),
-      .mem_data_ack_i    (icache_mem_data_ack),
-      .mem_data_o        (icache_mem_data),
+      .clk_i         (clk_i),
+      .rst_ni        (rst_ni),
+      .clear_i       (clear_i),
+      .flush_i       (flush_i),
+      .en_i          (en_i),
+      .miss_o        (miss_o),
+      .areq_i        (areq_i),
+      .areq_o        (areq_o),
+      .dreq_i        (dreq_i),
+      .dreq_o        (dreq_o),
+      .mem_rtrn_vld_i(icache_mem_rtrn_vld),
+      .mem_rtrn_i    (icache_mem_rtrn),
+      .mem_data_req_o(icache_mem_data_req),
+      .mem_data_ack_i(icache_mem_data_ack),
+      .mem_data_o    (icache_mem_data),
       .icache_sram_req_o (),
       .icache_sram_resp_i('0)
   );
@@ -145,6 +147,7 @@ module cva6_icache_axi_wrapper
   ) i_axi_shim (
       .clk_i      (clk_i),
       .rst_ni     (rst_ni),
+      .clear_i    (clear_i),
       .rd_req_i   (axi_rd_req),
       .rd_gnt_o   (axi_rd_gnt),
       .rd_addr_i  (axi_rd_addr),
@@ -206,10 +209,17 @@ module cva6_icache_axi_wrapper
       first_q     <= 1'b1;
       rd_shift_q  <= '0;
     end else begin
-      req_valid_q <= req_valid_d;
-      req_data_q  <= req_data_d;
-      first_q     <= first_d;
-      rd_shift_q  <= rd_shift_d;
+      if (clear_i) begin
+        req_valid_q <= 1'b0;
+        req_data_q  <= '0;
+        first_q     <= 1'b1;
+        rd_shift_q  <= '0;
+      end else begin
+        req_valid_q <= req_valid_d;
+        req_data_q  <= req_data_d;
+        first_q     <= first_d;
+        rd_shift_q  <= rd_shift_d;
+      end
     end
   end
 

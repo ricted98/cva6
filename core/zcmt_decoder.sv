@@ -20,6 +20,8 @@ module zcmt_decoder #(
     input  logic                             clk_i,
     // Asynchronous reset active low - SUBSYSTEM
     input  logic                             rst_ni,
+    // Synchronous clear active high - SUBSYSTEM
+    input  logic                             clear_i,
     // Instruction input - compressed_decoder
     input  logic          [            31:0] instr_i,
     // current PC - FRONTEND
@@ -127,7 +129,8 @@ module zcmt_decoder #(
       state_q <= IDLE;
 
     end else begin
-      state_q <= state_d;
+      if (clear_i) state_q <= IDLE;
+      else state_q <= state_d;
     end
   end
 endmodule

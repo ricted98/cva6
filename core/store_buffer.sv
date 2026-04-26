@@ -24,6 +24,7 @@ module store_buffer
 ) (
     input logic clk_i,  // Clock
     input logic rst_ni,  // Asynchronous reset active low
+    input logic clear_i,  // Synchronous clear active high
     input logic flush_i,  // if we flush we need to pause the transactions on the memory
                           // otherwise we will run in a deadlock with the memory arbiter
     input logic stall_st_pending_i,  // Stall issuing non-speculative request
@@ -268,10 +269,17 @@ module store_buffer
       speculative_write_pointer_q <= '0;
       speculative_status_cnt_q    <= '0;
     end else begin
-      speculative_queue_q         <= speculative_queue_n;
-      speculative_read_pointer_q  <= speculative_read_pointer_n;
-      speculative_write_pointer_q <= speculative_write_pointer_n;
-      speculative_status_cnt_q    <= speculative_status_cnt_n;
+      if (clear_i) begin
+        speculative_queue_q         <= '{default: 0};
+        speculative_read_pointer_q  <= '0;
+        speculative_write_pointer_q <= '0;
+        speculative_status_cnt_q    <= '0;
+      end else begin
+        speculative_queue_q         <= speculative_queue_n;
+        speculative_read_pointer_q  <= speculative_read_pointer_n;
+        speculative_write_pointer_q <= speculative_write_pointer_n;
+        speculative_status_cnt_q    <= speculative_status_cnt_n;
+      end
     end
   end
 
@@ -283,10 +291,17 @@ module store_buffer
       commit_write_pointer_q <= '0;
       commit_status_cnt_q    <= '0;
     end else begin
-      commit_queue_q         <= commit_queue_n;
-      commit_read_pointer_q  <= commit_read_pointer_n;
-      commit_write_pointer_q <= commit_write_pointer_n;
-      commit_status_cnt_q    <= commit_status_cnt_n;
+      if (clear_i) begin
+        commit_queue_q         <= '{default: 0};
+        commit_read_pointer_q  <= '0;
+        commit_write_pointer_q <= '0;
+        commit_status_cnt_q    <= '0;
+      end else begin
+        commit_queue_q         <= commit_queue_n;
+        commit_read_pointer_q  <= commit_read_pointer_n;
+        commit_write_pointer_q <= commit_write_pointer_n;
+        commit_status_cnt_q    <= commit_status_cnt_n;
+      end
     end
   end
 

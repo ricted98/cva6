@@ -37,6 +37,7 @@ module wt_dcache_mem
 ) (
     input logic clk_i,
     input logic rst_ni,
+    input logic clear_i,
 
     // ports
     input logic [NumPorts-1:0][CVA6Cfg.DCACHE_TAG_WIDTH-1:0] rd_tag_i,  // tag in - comes one cycle later
@@ -173,7 +174,7 @@ module wt_dcache_mem
   ) i_rr_arb_tree (
       .clk_i  (clk_i),
       .rst_ni (rst_ni),
-      .flush_i('0),
+      .flush_i(clear_i),
       .rr_i   ('0),
       .req_i  (rd_req_masked),
       .gnt_o  (rd_ack_o),
@@ -359,10 +360,17 @@ module wt_dcache_mem
       vld_sel_q  <= '0;
       cmp_en_q   <= '0;
     end else begin
-      bank_idx_q <= bank_idx_d;
-      bank_off_q <= bank_off_d;
-      vld_sel_q  <= vld_sel_d;
-      cmp_en_q   <= cmp_en_d;
+      if (clear_i) begin
+        bank_idx_q <= '0;
+        bank_off_q <= '0;
+        vld_sel_q  <= '0;
+        cmp_en_q   <= '0;
+      end else begin
+        bank_idx_q <= bank_idx_d;
+        bank_off_q <= bank_off_d;
+        vld_sel_q  <= vld_sel_d;
+        cmp_en_q   <= cmp_en_d;
+      end
     end
   end
 
@@ -416,10 +424,15 @@ module wt_dcache_mem
       vld_mirror <= '{default: '0};
       tag_mirror <= '{default: '0};
     end else begin
-      for (int i = 0; i < CVA6Cfg.DCACHE_SET_ASSOC; i++) begin
-        if (vld_req[i] & vld_we) begin
-          vld_mirror[vld_addr][i] <= vld_wdata[i];
-          tag_mirror[vld_addr][i] <= wr_cl_tag_i;
+      if (clear_i) begin
+        vld_mirror <= '{default: '0};
+        tag_mirror <= '{default: '0};
+      end else begin
+        for (int i = 0; i < CVA6Cfg.DCACHE_SET_ASSOC; i++) begin
+          if (vld_req[i] & vld_we) begin
+            vld_mirror[vld_addr][i] <= vld_wdata[i];
+            tag_mirror[vld_addr][i] <= wr_cl_tag_i;
+          end
         end
       end
     end

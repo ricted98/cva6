@@ -30,6 +30,8 @@ module bht #(
     input logic clk_i,
     // Asynchronous reset active low - SUBSYSTEM
     input logic rst_ni,
+    // Synchronous clear active high - SUBSYSTEM
+    input logic clear_i,
     // Branch prediction flush request - zero
     input logic flush_bp_i,
     // Debug mode state - CSR
@@ -110,16 +112,24 @@ module bht #(
           end
         end
       end else begin
-        // evict all entries
-        if (flush_bp_i) begin
-          for (int i = 0; i < NR_ROWS; i++) begin
+        if (clear_i) begin
+          for (int unsigned i = 0; i < NR_ROWS; i++) begin
             for (int j = 0; j < CVA6Cfg.INSTR_PER_FETCH; j++) begin
-              bht_q[i][j].valid <= 1'b0;
-              bht_q[i][j].saturation_counter <= 2'b10;
+              bht_q[i][j] <= '0;
             end
           end
         end else begin
-          bht_q <= bht_d;
+          // evict all entries
+          if (flush_bp_i) begin
+            for (int i = 0; i < NR_ROWS; i++) begin
+              for (int j = 0; j < CVA6Cfg.INSTR_PER_FETCH; j++) begin
+                bht_q[i][j].valid <= 1'b0;
+                bht_q[i][j].saturation_counter <= 2'b10;
+              end
+            end
+          end else begin
+            bht_q <= bht_d;
+          end
         end
       end
     end
@@ -285,21 +295,31 @@ module bht #(
           bht_ram_write_address_q <= '0;
           update_row_index_q <= '0;
         end else begin
-          for (int i = 0; i < CVA6Cfg.INSTR_PER_FETCH; i++) begin
-            bht_updated_valid[i][1] <= bht_updated_valid[i][0];
-            bht_updated_valid[i][0] <= bht_updated[i].valid;
-            bht_updated_pc[i][1] <= bht_updated_pc[i][0];
-            bht_updated_pc[i][0] <= bht_update_i.pc;
+          if (clear_i) begin
+            bht_updated_valid <= '0;
+            bht_update_taken <= '0;
+            bht_ram_wdata_q <= '0;
+            row_index_q <= '0;
+            bht_ram_we_q <= '0;
+            bht_ram_write_address_q <= '0;
+            update_row_index_q <= '0;
+          end else begin
+            for (int i = 0; i < CVA6Cfg.INSTR_PER_FETCH; i++) begin
+              bht_updated_valid[i][1] <= bht_updated_valid[i][0];
+              bht_updated_valid[i][0] <= bht_updated[i].valid;
+              bht_updated_pc[i][1] <= bht_updated_pc[i][0];
+              bht_updated_pc[i][0] <= bht_update_i.pc;
 
+            end
+            vpc_q <= vpc_i;
+            bht_update_taken <= bht_update_i.taken;
+            bht_ram_wdata_q <= bht_ram_wdata;
+            bht_ram_we_q <= bht_ram_we;
+            bht_ram_write_address_q <= bht_ram_write_address;
+            update_row_index_q <= update_row_index;
+
+            row_index_q <= row_index;
           end
-          vpc_q <= vpc_i;
-          bht_update_taken <= bht_update_i.taken;
-          bht_ram_wdata_q <= bht_ram_wdata;
-          bht_ram_we_q <= bht_ram_we;
-          bht_ram_write_address_q <= bht_ram_write_address;
-          update_row_index_q <= update_row_index;
-
-          row_index_q <= row_index;
         end
       end
     end

@@ -27,6 +27,7 @@ module axi_shim #(
 ) (
     input logic clk_i,  // Clock
     input logic rst_ni,  // Asynchronous reset active low
+    input logic clear_i,  // Synchronous clear active high
     // read channel
     // request
     input logic rd_req_i,
@@ -289,8 +290,13 @@ module axi_shim #(
       wr_state_q <= IDLE;
       wr_cnt_q   <= '0;
     end else begin
-      wr_state_q <= wr_state_d;
-      wr_cnt_q   <= wr_cnt_d;
+      if (clear_i) begin
+        wr_state_q <= IDLE;
+        wr_cnt_q   <= '0;
+      end else begin
+        wr_state_q <= wr_state_d;
+        wr_cnt_q   <= wr_cnt_d;
+      end
     end
   end
 

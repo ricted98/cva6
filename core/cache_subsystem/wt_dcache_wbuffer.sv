@@ -61,6 +61,7 @@ module wt_dcache_wbuffer
 ) (
     input logic clk_i,  // Clock
     input logic rst_ni, // Asynchronous reset active low
+    input logic clear_i, // Synchronous clear active high
 
     input logic cache_en_i,  // writes are treated as NC if disabled
     output logic empty_o,  // asserted if no data is present in write buffer
@@ -307,7 +308,7 @@ module wt_dcache_wbuffer
   ) i_rtrn_id_fifo (
       .clk_i     (clk_i),
       .rst_ni    (rst_ni),
-      .flush_i   (1'b0),
+      .flush_i   (clear_i),
       .testmode_i(1'b0),
       .full_o    (),
       .empty_o   (rtrn_empty),
@@ -357,7 +358,7 @@ module wt_dcache_wbuffer
   ) i_tx_id_rr (
       .clk_i  (clk_i),
       .rst_ni (rst_ni),
-      .flush_i('0),
+      .flush_i(clear_i),
       .rr_i   ('0),
       .req_i  (~tx_vld_o),
       .gnt_o  (),
@@ -467,7 +468,7 @@ module wt_dcache_wbuffer
   ) i_dirty_rr (
       .clk_i  (clk_i),
       .rst_ni (rst_ni),
-      .flush_i('0),
+      .flush_i(clear_i),
       .rr_i   ('0),
       .req_i  (dirty),
       .gnt_o  (),
@@ -485,7 +486,7 @@ module wt_dcache_wbuffer
   ) i_clean_rr (
       .clk_i  (clk_i),
       .rst_ni (rst_ni),
-      .flush_i('0),
+      .flush_i(clear_i),
       .rr_i   ('0),
       .req_i  (tocheck),
       .gnt_o  (),
@@ -620,17 +621,31 @@ module wt_dcache_wbuffer
       wr_cl_vld_q  <= '0;
       wr_cl_idx_q  <= '0;
     end else begin
-      wbuffer_q    <= wbuffer_d;
-      tx_stat_q    <= tx_stat_d;
-      ni_pending_q <= ni_pending_d;
-      check_ptr_q  <= check_ptr_d;
-      check_ptr_q1 <= check_ptr_q;
-      check_en_q   <= check_en_d;
-      check_en_q1  <= check_en_q;
-      rd_tag_q     <= rd_tag_d;
-      rd_hit_oh_q  <= rd_hit_oh_d;
-      wr_cl_vld_q  <= wr_cl_vld_d;
-      wr_cl_idx_q  <= wr_cl_idx_d;
+      if (clear_i) begin
+        wbuffer_q    <= '{default: '0};
+        tx_stat_q    <= '{default: '0};
+        ni_pending_q <= '0;
+        check_ptr_q  <= '0;
+        check_ptr_q1 <= '0;
+        check_en_q   <= '0;
+        check_en_q1  <= '0;
+        rd_tag_q     <= '0;
+        rd_hit_oh_q  <= '0;
+        wr_cl_vld_q  <= '0;
+        wr_cl_idx_q  <= '0;
+      end else begin
+        wbuffer_q    <= wbuffer_d;
+        tx_stat_q    <= tx_stat_d;
+        ni_pending_q <= ni_pending_d;
+        check_ptr_q  <= check_ptr_d;
+        check_ptr_q1 <= check_ptr_q;
+        check_en_q   <= check_en_d;
+        check_en_q1  <= check_en_q;
+        rd_tag_q     <= rd_tag_d;
+        rd_hit_oh_q  <= rd_hit_oh_d;
+        wr_cl_vld_q  <= wr_cl_vld_d;
+        wr_cl_idx_q  <= wr_cl_idx_d;
+      end
     end
   end
 

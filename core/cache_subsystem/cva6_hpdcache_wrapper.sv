@@ -59,6 +59,8 @@ module cva6_hpdcache_wrapper
     input logic clk_i,
     // Asynchronous reset active low - SUBSYSTEM
     input logic rst_ni,
+    // Synchronous clear active high - SUBSYSTEM
+    input logic clear_i,
 
     //  D$
     //  {{{
@@ -171,6 +173,7 @@ module cva6_hpdcache_wrapper
       ) i_cva6_hpdcache_load_if_adapter (
           .clk_i,
           .rst_ni,
+          .clear_i,
 
           .hpdcache_req_sid_i(hpdcache_req_sid_t'(r)),
 
@@ -209,6 +212,7 @@ module cva6_hpdcache_wrapper
     ) i_cva6_hpdcache_store_if_adapter (
         .clk_i,
         .rst_ni,
+        .clear_i,
 
         .hpdcache_req_sid_i(hpdcache_req_sid_t'(NumPorts - 1)),
 
@@ -238,6 +242,7 @@ module cva6_hpdcache_wrapper
     ) i_cva6_hpdcache_cmo_if_adapter (
         .clk_i,
         .rst_ni,
+        .clear_i,
 
         .dcache_req_sid_i(hpdcache_req_sid_t'(NumPorts)),
 
@@ -319,6 +324,7 @@ module cva6_hpdcache_wrapper
   ) i_hwpf_stride_wrapper (
       .clk_i,
       .rst_ni,
+      .clear_i,
 
       .hwpf_stride_base_set_i    (hwpf_base_set_i),
       .hwpf_stride_base_i        (hwpf_base_i),
@@ -375,6 +381,7 @@ module cva6_hpdcache_wrapper
   ) i_hpdcache (
       .clk_i,
       .rst_ni,
+      .clear_i,
 
       .wbuf_flush_i(dcache_flush_i),
 

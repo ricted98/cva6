@@ -108,6 +108,7 @@ module cva6_tb_wrapper import uvmt_cva6_pkg::*; #(
    ) i_cva6 (
     .clk_i                ( clk_i                        ),
     .rst_ni               ( rst_ni                       ),
+    .clear_i              ( 1'b0                         ),
     .boot_addr_i          ( boot_addr_i                  ),//Driving the boot_addr value from the core control agent
     .hart_id_i            ( default_inputs_vif.hart_id   ),
     .irq_i                ( {1'b0, irq_i[0]}             ),

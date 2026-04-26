@@ -32,6 +32,7 @@ module cva6_tlb
 ) (
     input logic clk_i,  // Clock
     input logic rst_ni,  // Asynchronous reset active low
+    input logic clear_i,  // Synchronous clear active high
     input logic flush_i,  // Flush normal translations signal
     input logic flush_vvma_i,  // Flush VS stage signal
     input logic flush_gvma_i,  // Flush G stage signal
@@ -489,9 +490,15 @@ module cva6_tlb
       content_q   <= '{default: 0};
       plru_tree_q <= '{default: 0};
     end else begin
-      tags_q      <= tags_n;
-      content_q   <= content_n;
-      plru_tree_q <= plru_tree_n;
+      if (clear_i) begin
+        tags_q      <= '{default: 0};
+        content_q   <= '{default: 0};
+        plru_tree_q <= '{default: 0};
+      end else begin
+        tags_q      <= tags_n;
+        content_q   <= content_n;
+        plru_tree_q <= plru_tree_n;
+      end
     end
   end
   //--------------
