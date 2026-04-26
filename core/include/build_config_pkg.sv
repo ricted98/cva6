@@ -44,6 +44,7 @@ package build_config_pkg;
     cfg.FpgaEn = CVA6Cfg.FpgaEn;
     cfg.FpgaAlteraEn = CVA6Cfg.FpgaAlteraEn;
     cfg.TechnoCut = CVA6Cfg.TechnoCut;
+    cfg.ExternalSram = CVA6Cfg.ExternalSram;
 
     cfg.SuperscalarEn = CVA6Cfg.SuperscalarEn;
     cfg.NrCommitPorts = CVA6Cfg.SuperscalarEn ? unsigned'(2) : CVA6Cfg.NrCommitPorts;

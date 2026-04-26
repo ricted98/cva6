@@ -188,6 +188,7 @@ ${CVA6_REPO_DIR}/core/cache_subsystem/wt_dcache_missunit.sv
 ${CVA6_REPO_DIR}/core/cache_subsystem/wt_dcache_wbuffer.sv
 ${CVA6_REPO_DIR}/core/cache_subsystem/wt_dcache.sv
 ${CVA6_REPO_DIR}/core/cache_subsystem/cva6_icache.sv
+${CVA6_REPO_DIR}/core/cache_subsystem/icache_memwrap.sv
 ${CVA6_REPO_DIR}/core/cache_subsystem/wt_cache_subsystem.sv
 ${CVA6_REPO_DIR}/core/cache_subsystem/wt_axi_adapter.sv
 ${CVA6_REPO_DIR}/core/cache_subsystem/tag_cmp.sv
@@ -202,6 +203,7 @@ ${HPDCACHE_DIR}/rtl/src/utils/hpdcache_mem_resp_demux.sv
 ${HPDCACHE_DIR}/rtl/src/utils/hpdcache_mem_to_axi_read.sv
 ${HPDCACHE_DIR}/rtl/src/utils/hpdcache_mem_to_axi_write.sv
 ${CVA6_REPO_DIR}/core/include/dummy_l15_pkg.sv
+${CVA6_REPO_DIR}/core/cache_subsystem/cva6_hpdcache_subsystem_pkg.sv
 ${CVA6_REPO_DIR}/core/cache_subsystem/cva6_hpdcache_subsystem.sv
 ${CVA6_REPO_DIR}/core/cache_subsystem/cva6_hpdcache_subsystem_axi_arbiter.sv
 ${CVA6_REPO_DIR}/core/cache_subsystem/cva6_hpdcache_if_adapter.sv
@@ -224,7 +226,7 @@ ${CVA6_REPO_DIR}/vendor/pulp-platform/tech_cells_generic/src/rtl/tc_sram.sv
 ${CVA6_REPO_DIR}/common/local/util/sram.sv
 ${CVA6_REPO_DIR}/common/local/util/sram_cache.sv
 
-// MMU 
+// MMU
 ${CVA6_REPO_DIR}/core/cva6_mmu/cva6_mmu.sv
 ${CVA6_REPO_DIR}/core/cva6_mmu/cva6_ptw.sv
 ${CVA6_REPO_DIR}/core/cva6_mmu/cva6_tlb.sv

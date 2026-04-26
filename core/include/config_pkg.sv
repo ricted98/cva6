@@ -227,6 +227,8 @@ package config_pkg;
     bit          FpgaAlteraEn;
     // Is Techno Cut instantiated
     bit          TechnoCut;
+    // Use externalized SRAM macros for caches
+    bit          ExternalSram;
     // Enable superscalar* with 2 issue ports and 2 commit ports.
     bit          SuperscalarEn;
     // Enable ALU-ALU bypass (superscalar mode only)
@@ -279,6 +281,7 @@ package config_pkg;
     bit FpgaEn;
     bit FpgaAlteraEn;
     bit TechnoCut;
+    bit ExternalSram;
 
     bit          SuperscalarEn;
     int unsigned NrCommitPorts;

@@ -37,29 +37,36 @@ module cva6_icache
     parameter type icache_req_t = logic,
     parameter type icache_rtrn_t = logic,
     /// ID to be used for read transactions
-    parameter logic [CVA6Cfg.MEM_TID_WIDTH-1:0] RdTxId = 0
+    parameter logic [CVA6Cfg.MEM_TID_WIDTH-1:0] RdTxId = 0,
+    // External SRAM parameters
+    parameter bit ExternalSram = 1'b0,
+    parameter type icache_sram_req_t = logic,
+    parameter type icache_sram_resp_t = logic
 ) (
     input logic clk_i,
     input logic rst_ni,
 
     /// flush the icache, flush and kill have to be asserted together
-    input  logic         flush_i,
+    input  logic              flush_i,
     /// enable icache
-    input  logic         en_i,
+    input  logic              en_i,
     /// to performance counter
-    output logic         miss_o,
+    output logic              miss_o,
     // address translation requests
-    input  icache_areq_t areq_i,
-    output icache_arsp_t areq_o,
+    input  icache_areq_t      areq_i,
+    output icache_arsp_t      areq_o,
     // data requests
-    input  icache_dreq_t dreq_i,
-    output icache_drsp_t dreq_o,
+    input  icache_dreq_t      dreq_i,
+    output icache_drsp_t      dreq_o,
     // refill port
-    input  logic         mem_rtrn_vld_i,
-    input  icache_rtrn_t mem_rtrn_i,
-    output logic         mem_data_req_o,
-    input  logic         mem_data_ack_i,
-    output icache_req_t  mem_data_o
+    input  logic              mem_rtrn_vld_i,
+    input  icache_rtrn_t      mem_rtrn_i,
+    output logic              mem_data_req_o,
+    input  logic              mem_data_ack_i,
+    output icache_req_t       mem_data_o,
+    // External SRAM interface
+    output icache_sram_req_t  icache_sram_req_o,
+    input  icache_sram_resp_t icache_sram_resp_i
 );
 
   localparam ICACHE_OFFSET_WIDTH = $clog2(CVA6Cfg.ICACHE_LINE_WIDTH / 8);
@@ -452,54 +459,52 @@ module cva6_icache
   // memory arrays and regs
   ///////////////////////////////////////////////////////
 
-
   logic [CVA6Cfg.ICACHE_TAG_WIDTH:0] cl_tag_valid_rdata[CVA6Cfg.ICACHE_SET_ASSOC-1:0];
 
-  for (genvar i = 0; i < CVA6Cfg.ICACHE_SET_ASSOC; i++) begin : gen_sram
-    // Tag RAM
-    sram_cache #(
-        // tag + valid bit
-        .DATA_WIDTH (CVA6Cfg.ICACHE_TAG_WIDTH + 1),
-        .BYTE_ACCESS(0),
-        .TECHNO_CUT (CVA6Cfg.TechnoCut),
-        .NUM_WORDS  (ICACHE_NUM_WORDS)
-    ) tag_sram (
-        .clk_i  (clk_i),
-        .rst_ni (rst_ni),
-        .req_i  (vld_req[i]),
-        .we_i   (vld_we),
-        .addr_i (vld_addr),
-        // we can always use the saved tag here since it takes a
-        // couple of cycle until we write to the cache upon a miss
-        .wuser_i('0),
-        .wdata_i({vld_wdata[i], cl_tag_q}),
-        .be_i   ('1),
-        .ruser_o(),
-        .rdata_o(cl_tag_valid_rdata[i])
-    );
+  // Local SRAM request/response structs (shared between external and internal paths)
+  icache_sram_req_t sram_req;
+  icache_sram_resp_t sram_resp;
 
-    assign cl_tag_rdata[i] = cl_tag_valid_rdata[i][CVA6Cfg.ICACHE_TAG_WIDTH-1:0];
-    assign vld_rdata[i]    = cl_tag_valid_rdata[i][CVA6Cfg.ICACHE_TAG_WIDTH];
+  // Pack SRAM request signals into struct
+  always_comb begin
+    sram_req.tag_req  = vld_req;
+    sram_req.tag_we   = vld_we;
+    sram_req.tag_addr = vld_addr;
+    for (int i = 0; i < CVA6Cfg.ICACHE_SET_ASSOC; i++) begin
+      sram_req.tag_wdata[i] = {vld_wdata[i], cl_tag_q};
+    end
+    sram_req.data_req   = cl_req;
+    sram_req.data_we    = cl_we;
+    sram_req.data_addr  = cl_index;
+    sram_req.data_wdata = mem_rtrn_i.data;
+    sram_req.data_wuser = mem_rtrn_i.user;
+  end
 
-    // Data RAM
-    sram_cache #(
-        .USER_WIDTH (CVA6Cfg.ICACHE_USER_LINE_WIDTH),
-        .DATA_WIDTH (CVA6Cfg.ICACHE_LINE_WIDTH),
-        .USER_EN    (CVA6Cfg.FETCH_USER_EN),
-        .BYTE_ACCESS(0),
-        .TECHNO_CUT (CVA6Cfg.TechnoCut),
-        .NUM_WORDS  (ICACHE_NUM_WORDS)
-    ) data_sram (
-        .clk_i  (clk_i),
-        .rst_ni (rst_ni),
-        .req_i  (cl_req[i]),
-        .we_i   (cl_we),
-        .addr_i (cl_index),
-        .wuser_i(mem_rtrn_i.user),
-        .wdata_i(mem_rtrn_i.data),
-        .be_i   ('1),
-        .ruser_o(cl_ruser[i]),
-        .rdata_o(cl_rdata[i])
+  // Unpack SRAM response signals
+  for (genvar i = 0; i < CVA6Cfg.ICACHE_SET_ASSOC; i++) begin : gen_sram_resp
+    assign cl_tag_valid_rdata[i] = sram_resp.tag_rdata[i];
+    assign cl_tag_rdata[i]       = cl_tag_valid_rdata[i][CVA6Cfg.ICACHE_TAG_WIDTH-1:0];
+    assign vld_rdata[i]          = cl_tag_valid_rdata[i][CVA6Cfg.ICACHE_TAG_WIDTH];
+    assign cl_rdata[i]           = sram_resp.data_rdata[i];
+    assign cl_ruser[i]           = sram_resp.data_ruser[i];
+  end
+
+  if (ExternalSram) begin : gen_ext_sram
+    // Route packed struct to external ports
+    assign icache_sram_req_o = sram_req;
+    assign sram_resp = icache_sram_resp_i;
+  end else begin : gen_int_sram
+    assign icache_sram_req_o = '0;
+    // Instantiate local icache_memwrap
+    icache_memwrap #(
+        .CVA6Cfg           (CVA6Cfg),
+        .icache_sram_req_t (icache_sram_req_t),
+        .icache_sram_resp_t(icache_sram_resp_t)
+    ) i_icache_memwrap (
+        .clk_i (clk_i),
+        .rst_ni(rst_ni),
+        .req_i (sram_req),
+        .resp_o(sram_resp)
     );
   end
 
