@@ -35,6 +35,8 @@ module load_store_unit
     input logic clk_i,
     // Asynchronous reset active low - SUBSYSTEM
     input logic rst_ni,
+    // Synchronous clear active high - SUBSYSTEM
+    input logic clear_i,
     // TO_BE_COMPLETED - TO_BE_COMPLETED
     input logic flush_i,
     // TO_BE_COMPLETED - TO_BE_COMPLETED
@@ -270,6 +272,7 @@ module load_store_unit
     ) i_cva6_mmu (
         .clk_i(clk_i),
         .rst_ni(rst_ni),
+        .clear_i(clear_i),
         .flush_i(flush_i),
         .enable_translation_i(enable_translation_i),
         .enable_g_translation_i(enable_g_translation_i),
@@ -343,13 +346,19 @@ module load_store_unit
         pmp_exception <= '0;
         pmp_translation_valid <= 1'b0;
       end else begin
-        if (CVA6Cfg.VLEN >= CVA6Cfg.PLEN) begin : gen_virtual_physical_address_lsu
-          lsu_paddr <= mmu_vaddr[CVA6Cfg.PLEN-1:0];
+        if (clear_i) begin
+          lsu_paddr <= '0;
+          pmp_exception <= '0;
+          pmp_translation_valid <= 1'b0;
         end else begin
-          lsu_paddr <= CVA6Cfg.PLEN'(mmu_vaddr);
+          if (CVA6Cfg.VLEN >= CVA6Cfg.PLEN) begin : gen_virtual_physical_address_lsu
+            lsu_paddr <= mmu_vaddr[CVA6Cfg.PLEN-1:0];
+          end else begin
+            lsu_paddr <= CVA6Cfg.PLEN'(mmu_vaddr);
+          end
+          pmp_exception <= misaligned_exception;
+          pmp_translation_valid <= translation_req;
         end
-        pmp_exception <= misaligned_exception;
-        pmp_translation_valid <= translation_req;
       end
     end
 
@@ -383,6 +392,7 @@ module load_store_unit
   ) i_pmp_data_if (
       .clk_i               (clk_i),
       .rst_ni              (rst_ni),
+      .clear_i             (clear_i),
       .icache_areq_i       (pmp_icache_areq_i),
       .icache_areq_o       (icache_areq_o),
       .icache_fetch_vaddr_i(icache_areq_i.fetch_vaddr),
@@ -417,7 +427,8 @@ module load_store_unit
       if (~rst_ni) begin
         mmu_state_q <= CVA6;
       end else begin
-        mmu_state_q <= mmu_state_d;
+        if (clear_i) mmu_state_q <= CVA6;
+        else mmu_state_q <= mmu_state_d;
       end
     end
     // Straightforward and slow-reactive MMU arbitration logic
@@ -519,6 +530,7 @@ module load_store_unit
   ) i_store_unit (
       .clk_i,
       .rst_ni,
+      .clear_i,
       .flush_i,
       .stall_st_pending_i,
       .no_st_pending_o,
@@ -569,6 +581,7 @@ module load_store_unit
   ) i_load_unit (
       .clk_i,
       .rst_ni,
+      .clear_i,
       .flush_i,
       .valid_i   (ld_valid_i),
       .lsu_ctrl_i(lsu_ctrl),
@@ -876,6 +889,7 @@ module load_store_unit
   ) lsu_bypass_i (
       .clk_i,
       .rst_ni,
+      .clear_i,
       .flush_i,
       .lsu_req_i      (lsu_req_i),
       .lsu_req_valid_i(lsu_valid_i),

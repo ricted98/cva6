@@ -29,6 +29,7 @@ module wt_dcache
 ) (
     input logic clk_i,  // Clock
     input logic rst_ni, // Asynchronous reset active low
+    input logic clear_i, // Synchronous clear active high
 
     // Cache management
     input logic enable_i,  // from CSR
@@ -140,6 +141,7 @@ module wt_dcache
   ) i_wt_dcache_missunit (
       .clk_i          (clk_i),
       .rst_ni         (rst_ni),
+      .clear_i        (clear_i),
       .enable_i       (enable_i),
       .flush_i        (flush_i),
       .flush_ack_o    (flush_ack_o),
@@ -204,6 +206,7 @@ module wt_dcache
       ) i_wt_dcache_ctrl (
           .clk_i          (clk_i),
           .rst_ni         (rst_ni),
+          .clear_i        (clear_i),
           .cache_en_i     (cache_en),
           // reqs from core
           .req_port_i     (req_ports_i[k]),
@@ -271,6 +274,7 @@ module wt_dcache
   ) i_wt_dcache_wbuffer (
       .clk_i          (clk_i),
       .rst_ni         (rst_ni),
+      .clear_i        (clear_i),
       .empty_o        (wbuffer_empty_o),
       .not_ni_o       (wbuffer_not_ni_o),
       // TODO: fix this
@@ -331,6 +335,7 @@ module wt_dcache
   ) i_wt_dcache_mem (
       .clk_i          (clk_i),
       .rst_ni         (rst_ni),
+      .clear_i        (clear_i),
       // read ports
       .rd_prio_i      (rd_prio),
       .rd_tag_i       (rd_tag),

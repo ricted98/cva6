@@ -95,6 +95,7 @@ module ariane import ariane_pkg::*; #(
   ) i_cva6 (
     .clk_i                ( clk_i                     ),
     .rst_ni               ( rst_ni                    ),
+    .clear_i              ( 1'b0                      ),
     .boot_addr_i          ( boot_addr_i               ),
     .hart_id_i            ( hart_id_i                 ),
     .irq_i                ( irq_i                     ),

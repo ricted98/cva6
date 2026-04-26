@@ -24,6 +24,8 @@ module csr_buffer
     input logic clk_i,
     // Asynchronous reset active low - SUBSYSTEM
     input logic rst_ni,
+    // Synchronous clear active high - SUBSYSTEM
+    input logic clear_i,
     // Flush CSR - CONTROLLER
     input logic flush_i,
     // FU data needed to execute instruction - ISSUE_STAGE
@@ -76,7 +78,8 @@ module csr_buffer
     if (~rst_ni) begin
       csr_reg_q <= '{default: 0};
     end else begin
-      csr_reg_q <= csr_reg_n;
+      if (clear_i) csr_reg_q <= '{default: 0};
+      else csr_reg_q <= csr_reg_n;
     end
   end
 

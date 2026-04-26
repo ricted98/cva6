@@ -26,6 +26,8 @@ module serdiv
     input logic clk_i,
     // Asynchronous reset active low - SUBSYSTEM
     input logic rst_ni,
+    // Synchronous clear active high - SUBSYSTEM
+    input logic clear_i,
     // Serdiv translation ID - Mult
     input logic [CVA6Cfg.TRANS_ID_BITS-1:0] id_i,
     // A operand - Mult
@@ -259,18 +261,33 @@ module serdiv
       op_b_neg_one_q <= 1'b0;
       div_res_zero_q <= 1'b0;
     end else begin
-      state_q        <= state_d;
-      op_a_q         <= op_a_d;
-      op_b_q         <= op_b_d;
-      res_q          <= res_d;
-      cnt_q          <= cnt_d;
-      id_q           <= id_d;
-      rem_sel_q      <= rem_sel_d;
-      comp_inv_q     <= comp_inv_d;
-      res_inv_q      <= res_inv_d;
-      op_b_zero_q    <= op_b_zero_d;
-      op_b_neg_one_q <= op_b_neg_one_d;
-      div_res_zero_q <= div_res_zero_d;
+      if (clear_i) begin
+        state_q        <= IDLE;
+        op_a_q         <= '0;
+        op_b_q         <= '0;
+        res_q          <= '0;
+        cnt_q          <= '0;
+        id_q           <= '0;
+        rem_sel_q      <= 1'b0;
+        comp_inv_q     <= 1'b0;
+        res_inv_q      <= 1'b0;
+        op_b_zero_q    <= 1'b0;
+        op_b_neg_one_q <= 1'b0;
+        div_res_zero_q <= 1'b0;
+      end else begin
+        state_q        <= state_d;
+        op_a_q         <= op_a_d;
+        op_b_q         <= op_b_d;
+        res_q          <= res_d;
+        cnt_q          <= cnt_d;
+        id_q           <= id_d;
+        rem_sel_q      <= rem_sel_d;
+        comp_inv_q     <= comp_inv_d;
+        res_inv_q      <= res_inv_d;
+        op_b_zero_q    <= op_b_zero_d;
+        op_b_neg_one_q <= op_b_neg_one_d;
+        div_res_zero_q <= div_res_zero_d;
+      end
     end
   end
 

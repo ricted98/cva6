@@ -44,6 +44,7 @@ module cva6_hpdcache_subsystem_axi_arbiter
 (
     input logic clk_i,
     input logic rst_ni,
+    input logic clear_i,
 
     //  Interfaces from/to I$
     //  {{{
@@ -340,8 +341,10 @@ module cva6_hpdcache_subsystem_axi_arbiter
     if (!rst_ni) begin
       icache_miss_pending_q <= 1'b0;
     end else begin
-      icache_miss_pending_q <= ( (icache_miss_req_rok & mem_req_read_ready[0]) & ~icache_miss_pending_q) |
-                               (~(icache_miss_req_r   & icache_miss_req_rok)   &  icache_miss_pending_q);
+      if (clear_i) icache_miss_pending_q <= 1'b0;
+      else
+        icache_miss_pending_q <= ( (icache_miss_req_rok & mem_req_read_ready[0]) & ~icache_miss_pending_q) |
+                                 (~(icache_miss_req_r   & icache_miss_req_rok)   &  icache_miss_pending_q);
     end
   end
   // }}}

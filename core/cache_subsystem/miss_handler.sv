@@ -29,6 +29,7 @@ module miss_handler
 ) (
     input logic clk_i,
     input logic rst_ni,
+    input logic clear_i,
     input logic flush_i,  // flush request
     output logic flush_ack_o,  // acknowledge successful flush
     output logic miss_o,
@@ -530,12 +531,21 @@ module miss_handler
       evict_cl_q  <= '0;
       serve_amo_q <= 1'b0;
     end else begin
-      mshr_q      <= mshr_d;
-      state_q     <= state_d;
-      cnt_q       <= cnt_d;
-      evict_way_q <= evict_way_d;
-      evict_cl_q  <= evict_cl_d;
-      serve_amo_q <= serve_amo_d;
+      if (clear_i) begin
+        mshr_q      <= '0;
+        state_q     <= INIT;
+        cnt_q       <= '0;
+        evict_way_q <= '0;
+        evict_cl_q  <= '0;
+        serve_amo_q <= 1'b0;
+      end else begin
+        mshr_q      <= mshr_d;
+        state_q     <= state_d;
+        cnt_q       <= cnt_d;
+        evict_way_q <= evict_way_d;
+        evict_cl_q  <= evict_cl_d;
+        serve_amo_q <= serve_amo_d;
+      end
     end
   end
 
@@ -586,6 +596,7 @@ module miss_handler
   ) i_bypass_arbiter (
       .clk_i (clk_i),
       .rst_ni(rst_ni),
+      .clear_i(clear_i),
       // Master Side
       .req_i (bypass_ports_req),
       .rsp_o (bypass_ports_rsp),
@@ -610,6 +621,7 @@ module miss_handler
   ) i_bypass_axi_adapter (
       .clk_i(clk_i),
       .rst_ni(rst_ni),
+      .clear_i(clear_i),
       .req_i(bypass_adapter_req.req),
       .type_i(bypass_adapter_req.reqtype),
       .amo_i(bypass_adapter_req.amo),
@@ -645,6 +657,7 @@ module miss_handler
   ) i_miss_axi_adapter (
       .clk_i,
       .rst_ni,
+      .clear_i,
       .req_i                (req_fsm_miss_valid),
       .type_i               (req_fsm_miss_req),
       .amo_i                (AMO_NONE),
@@ -710,6 +723,7 @@ module axi_adapter_arbiter #(
 ) (
     input  logic                clk_i,   // Clock
     input  logic                rst_ni,  // Asynchronous reset active low
+    input  logic                clear_i,  // Synchronous clear active high
     // Master ports
     input  req_t [NR_PORTS-1:0] req_i,
     output rsp_t [NR_PORTS-1:0] rsp_o,
@@ -819,10 +833,17 @@ module axi_adapter_arbiter #(
       req_q             <= '0;
       outstanding_cnt_q <= '0;
     end else begin
-      state_q           <= state_d;
-      sel_q             <= sel_d;
-      req_q             <= req_d;
-      outstanding_cnt_q <= outstanding_cnt_d;
+      if (clear_i) begin
+        state_q           <= IDLE;
+        sel_q             <= '0;
+        req_q             <= '0;
+        outstanding_cnt_q <= '0;
+      end else begin
+        state_q           <= state_d;
+        sel_q             <= sel_d;
+        req_q             <= req_d;
+        outstanding_cnt_q <= outstanding_cnt_d;
+      end
     end
   end
   // ------------

@@ -45,6 +45,7 @@ module cva6_icache
 ) (
     input logic clk_i,
     input logic rst_ni,
+    input logic clear_i,
 
     /// flush the icache, flush and kill have to be asserted together
     input  logic              flush_i,
@@ -522,16 +523,29 @@ module cva6_icache
       repl_way_oh_q <= '0;
       inv_q         <= '0;
     end else begin
-      cl_tag_q      <= cl_tag_d;
-      flush_cnt_q   <= flush_cnt_d;
-      vaddr_q       <= vaddr_d;
-      cmp_en_q      <= cmp_en_d;
-      cache_en_q    <= cache_en_d;
-      flush_q       <= flush_d;
-      state_q       <= state_d;
-      cl_offset_q   <= cl_offset_d;
-      repl_way_oh_q <= repl_way_oh_d;
-      inv_q         <= inv_d;
+      if (clear_i) begin
+        cl_tag_q      <= '0;
+        flush_cnt_q   <= '0;
+        vaddr_q       <= '0;
+        cmp_en_q      <= '0;
+        cache_en_q    <= '0;
+        flush_q       <= '0;
+        state_q       <= FLUSH;
+        cl_offset_q   <= '0;
+        repl_way_oh_q <= '0;
+        inv_q         <= '0;
+      end else begin
+        cl_tag_q      <= cl_tag_d;
+        flush_cnt_q   <= flush_cnt_d;
+        vaddr_q       <= vaddr_d;
+        cmp_en_q      <= cmp_en_d;
+        cache_en_q    <= cache_en_d;
+        flush_q       <= flush_d;
+        state_q       <= state_d;
+        cl_offset_q   <= cl_offset_d;
+        repl_way_oh_q <= repl_way_oh_d;
+        inv_q         <= inv_d;
+      end
     end
   end
 
@@ -573,10 +587,15 @@ module cva6_icache
       vld_mirror <= '{default: '0};
       tag_mirror <= '{default: '0};
     end else begin
-      for (int i = 0; i < CVA6Cfg.ICACHE_SET_ASSOC; i++) begin
-        if (vld_req[i] & vld_we) begin
-          vld_mirror[vld_addr][i] <= vld_wdata[i];
-          tag_mirror[vld_addr][i] <= cl_tag_q;
+      if (clear_i) begin
+        vld_mirror <= '{default: '0};
+        tag_mirror <= '{default: '0};
+      end else begin
+        for (int i = 0; i < CVA6Cfg.ICACHE_SET_ASSOC; i++) begin
+          if (vld_req[i] & vld_we) begin
+            vld_mirror[vld_addr][i] <= vld_wdata[i];
+            tag_mirror[vld_addr][i] <= cl_tag_q;
+          end
         end
       end
     end

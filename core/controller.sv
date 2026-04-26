@@ -23,6 +23,8 @@ module controller
     input logic clk_i,
     // Asynchronous reset active low - SUBSYSTEM
     input logic rst_ni,
+    // Synchronous clear active high - SUBSYSTEM
+    input logic clear_i,
     // Virtualization mode - CSR_REGFILE
     input logic v_i,
     // Set PC om PC Gen - FRONTEND
@@ -268,10 +270,16 @@ module controller
       fence_i_active_q <= 1'b0;
       flush_dcache_o   <= 1'b0;
     end else begin
-      fence_active_q   <= fence_active_d;
-      fence_i_active_q <= fence_i_active_d;
-      // register on the flush signal, this signal might be critical
-      flush_dcache_o   <= flush_dcache;
+      if (clear_i) begin
+        fence_active_q   <= 1'b0;
+        fence_i_active_q <= 1'b0;
+        flush_dcache_o   <= 1'b0;
+      end else begin
+        fence_active_q   <= fence_active_d;
+        fence_i_active_q <= fence_i_active_d;
+        // register on the flush signal, this signal might be critical
+        flush_dcache_o   <= flush_dcache;
+      end
     end
   end
 endmodule

@@ -15,6 +15,7 @@ module pmp_data_if
 ) (
     input logic clk_i,
     input logic rst_ni,
+    input logic clear_i,
     // IF interface
     input icache_areq_t icache_areq_i,
     output icache_areq_t icache_areq_o,
@@ -168,14 +169,18 @@ module pmp_data_if
     if (~rst_ni) begin
       no_locked_data <= 1'b0;
     end else begin
-      if (ld_st_priv_lvl_i == riscv::PRIV_LVL_M) begin
-        no_locked_data <= 1'b1;
-        for (int i = 0; i < CVA6Cfg.NrPMPEntries; i++) begin
-          if (pmpcfg_i[i].locked && pmpcfg_i[i].addr_mode != riscv::OFF) begin
-            no_locked_data <= no_locked_data & 1'b0;
-          end else no_locked_data <= no_locked_data & 1'b1;
+      if (clear_i) begin
+        no_locked_data <= 1'b0;
+      end else begin
+        if (ld_st_priv_lvl_i == riscv::PRIV_LVL_M) begin
+          no_locked_data <= 1'b1;
+          for (int i = 0; i < CVA6Cfg.NrPMPEntries; i++) begin
+            if (pmpcfg_i[i].locked && pmpcfg_i[i].addr_mode != riscv::OFF) begin
+              no_locked_data <= no_locked_data & 1'b0;
+            end else no_locked_data <= no_locked_data & 1'b1;
+          end
+          if (no_locked_data == 1'b1) assert (data_allow_o == 1'b1);
         end
-        if (no_locked_data == 1'b1) assert (data_allow_o == 1'b1);
       end
     end
   end
@@ -184,14 +189,18 @@ module pmp_data_if
     if (~rst_ni) begin
       no_locked_if <= 1'b0;
     end else begin
-      if (priv_lvl_i == riscv::PRIV_LVL_M) begin
-        no_locked_if <= 1'b1;
-        for (int i = 0; i < CVA6Cfg.NrPMPEntries; i++) begin
-          if (pmpcfg_i[i].locked && pmpcfg_i[i].addr_mode != riscv::OFF) begin
-            no_locked_if <= no_locked_if & 1'b0;
-          end else no_locked_if <= no_locked_if & 1'b1;
+      if (clear_i) begin
+        no_locked_if <= 1'b0;
+      end else begin
+        if (priv_lvl_i == riscv::PRIV_LVL_M) begin
+          no_locked_if <= 1'b1;
+          for (int i = 0; i < CVA6Cfg.NrPMPEntries; i++) begin
+            if (pmpcfg_i[i].locked && pmpcfg_i[i].addr_mode != riscv::OFF) begin
+              no_locked_if <= no_locked_if & 1'b0;
+            end else no_locked_if <= no_locked_if & 1'b1;
+          end
+          if (no_locked_if == 1'b1) assert (pmp_if_allow == 1'b1);
         end
-        if (no_locked_if == 1'b1) assert (pmp_if_allow == 1'b1);
       end
     end
   end

@@ -343,6 +343,8 @@ module cva6
     input logic clk_i,
     // Asynchronous reset active low - SUBSYSTEM
     input logic rst_ni,
+    // Synchronous clear active high - SUBSYSTEM
+    input logic clear_i,
     // Reset boot address - SUBSYSTEM
     input logic [CVA6Cfg.VLEN-1:0] boot_addr_i,
     // Hard ID reflected as CSR - SUBSYSTEM
@@ -719,6 +721,7 @@ module cva6
   ) i_frontend (
       .clk_i,
       .rst_ni,
+      .clear_i,
       .boot_addr_i        (boot_addr_i[CVA6Cfg.VLEN-1:0]),
       .flush_bp_i         (1'b0),
       .flush_i            (flush_ctrl_if),                  // not entirely correct
@@ -760,6 +763,7 @@ module cva6
   ) id_stage_i (
       .clk_i,
       .rst_ni,
+      .clear_i,
       .flush_i(flush_ctrl_if),
       .debug_req_i,
 
@@ -898,6 +902,7 @@ module cva6
   ) issue_stage_i (
       .clk_i,
       .rst_ni,
+      .clear_i,
       .sb_full_o               (sb_full),
       .flush_unissued_instr_i  (flush_unissued_instr_ctrl_id),
       .flush_i                 (flush_ctrl_id),
@@ -1009,6 +1014,7 @@ module cva6
   ) ex_stage_i (
       .clk_i(clk_i),
       .rst_ni(rst_ni),
+      .clear_i(clear_i),
       .debug_mode_i(debug_mode),
       .flush_i(flush_ctrl_ex),
       .rs1_forwarding_i(rs1_forwarding_id_ex),
@@ -1203,6 +1209,7 @@ module cva6
   ) csr_regfile_i (
       .clk_i,
       .rst_ni,
+      .clear_i,
       .time_irq_i,
       .flush_o                 (flush_csr_ctrl),
       .halt_csr_o              (halt_csr_ctrl),
@@ -1306,6 +1313,7 @@ module cva6
     ) perf_counters_i (
         .clk_i         (clk_i),
         .rst_ni        (rst_ni),
+        .clear_i       (clear_i),
         .debug_mode_i  (debug_mode),
         .addr_i        (addr_csr_perf),
         .we_i          (we_csr_perf),
@@ -1347,6 +1355,7 @@ module cva6
   ) controller_i (
       .clk_i,
       .rst_ni,
+      .clear_i,
       // virtualization mode
       .v_i                   (v),
       // flush ports
@@ -1443,6 +1452,7 @@ module cva6
         // to D$
         .clk_i             (clk_i),
         .rst_ni            (rst_ni),
+        .clear_i           (clear_i),
         // I$
         .icache_en_i       (icache_en_csr),
         .icache_flush_i    (icache_flush_ctrl_cache),
@@ -1509,6 +1519,7 @@ module cva6
     ) i_cache_subsystem (
         .clk_i (clk_i),
         .rst_ni(rst_ni),
+        .clear_i(clear_i),
 
         .icache_en_i   (icache_en_csr),
         .icache_flush_i(icache_flush_ctrl_cache),
@@ -1581,6 +1592,7 @@ module cva6
         // to D$
         .clk_i             (clk_i),
         .rst_ni            (rst_ni),
+        .clear_i           (clear_i),
         .priv_lvl_i        (priv_lvl),
         // I$
         .icache_en_i       (icache_en_csr),
@@ -1637,6 +1649,7 @@ module cva6
     ) i_acc_dispatcher (
         .clk_i                 (clk_i),
         .rst_ni                (rst_ni),
+        .clear_i               (clear_i),
         .flush_unissued_instr_i(flush_unissued_instr_ctrl_id),
         .flush_ex_i            (flush_ctrl_ex),
         .flush_pipeline_o      (flush_acc),
@@ -1736,7 +1749,7 @@ module cva6
     ) i_pc_fifo (
         .clk_i     (clk_i),
         .rst_ni    (rst_ni),
-        .flush_i   ('0),
+        .flush_i   (clear_i),
         .testmode_i('0),
         .full_o    (),
         .empty_o   (pc_empty[i]),
@@ -1754,7 +1767,7 @@ module cva6
   ) i_rr_arb_tree (
       .clk_i  (clk_i),
       .rst_ni (rst_ni),
-      .flush_i('0),
+      .flush_i(clear_i),
       .rr_i   ('0),
       .req_i  (~pc_empty),
       .gnt_o  (pc_pop),
@@ -1829,7 +1842,7 @@ module cva6
   end
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (~rst_ni) begin
+    if (~rst_ni | clear_i) begin
       cycles <= 0;
     end else begin
       byte mode = "";

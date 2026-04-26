@@ -34,6 +34,8 @@ module lsu_bypass
     input logic clk_i,
     // Asynchronous reset active low - SUBSYSTEM
     input logic rst_ni,
+    // Synchronous clear active high - SUBSYSTEM
+    input logic clear_i,
     // TO_BE_COMPLETED - TO_BE_COMPLETED
     input logic flush_i,
 
@@ -135,10 +137,17 @@ module lsu_bypass
       write_pointer_q <= '0;
       read_pointer_q  <= '0;
     end else begin
-      mem_q           <= mem_n;
-      status_cnt_q    <= status_cnt_n;
-      write_pointer_q <= write_pointer_n;
-      read_pointer_q  <= read_pointer_n;
+      if (clear_i) begin
+        mem_q           <= '0;
+        status_cnt_q    <= '0;
+        write_pointer_q <= '0;
+        read_pointer_q  <= '0;
+      end else begin
+        mem_q           <= mem_n;
+        status_cnt_q    <= status_cnt_n;
+        write_pointer_q <= write_pointer_n;
+        read_pointer_q  <= read_pointer_n;
+      end
     end
   end
 endmodule

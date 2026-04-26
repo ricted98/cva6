@@ -30,6 +30,8 @@ module csr_regfile
     input logic clk_i,
     // Asynchronous reset active low - SUBSYSTEM
     input logic rst_ni,
+    // Synchronous clear active high - SUBSYSTEM
+    input logic clear_i,
     // Timer threw an interrupt - SUBSYSTEM
     input logic time_irq_i,
     // send a flush request out when a CSR with a side effect changes - CONTROLLER
@@ -2852,96 +2854,197 @@ module csr_regfile
         end
       end
     end else begin
-      priv_lvl_q <= priv_lvl_d;
-      // floating-point registers
-      fcsr_q     <= fcsr_d;
-      if (CVA6Cfg.RVZCMT) begin
-        jvt_q <= jvt_d;
-      end
-      // debug signals
-      if (CVA6Cfg.DebugEn) begin
-        debug_mode_q <= debug_mode_d;
-        dcsr_q       <= dcsr_d;
-        dpc_q        <= dpc_d;
-        dscratch0_q  <= dscratch0_d;
-        dscratch1_q  <= dscratch1_d;
-      end
-      // machine mode registers
-      mstatus_q        <= mstatus_d;
-      mtvec_rst_load_q <= 1'b0;
-      mtvec_q          <= mtvec_d;
-      mip_q            <= mip_d;
-      mie_q            <= mie_d;
-      mepc_q           <= mepc_d;
-      mcause_q         <= mcause_d;
-      mcounteren_q     <= mcounteren_d;
-      mscratch_q       <= mscratch_d;
-      if (CVA6Cfg.TvalEn) mtval_q <= mtval_d;
-      fiom_q          <= fiom_d;
-      dcache_q        <= dcache_d;
-      icache_q        <= icache_d;
-      mcountinhibit_q <= mcountinhibit_d;
-      acc_cons_q      <= acc_cons_d;
-      if (CVA6Cfg.RVZiCbom) begin
-        mcbie_q  <= mcbie_d;
-        mcbcfe_q <= mcbcfe_d;
-      end
-      // supervisor mode registers
-      if (CVA6Cfg.RVS) begin
-        medeleg_q    <= medeleg_d;
-        mideleg_q    <= mideleg_d;
-        sepc_q       <= sepc_d;
-        scause_q     <= scause_d;
-        stvec_q      <= stvec_d;
-        scounteren_q <= scounteren_d;
-        sscratch_q   <= sscratch_d;
-        if (CVA6Cfg.TvalEn) stval_q <= stval_d;
-        satp_q <= satp_d;
-        if (CVA6Cfg.RVZiCbom) begin
-          scbie_q  <= scbie_d;
-          scbcfe_q <= scbcfe_d;
+      if (clear_i) begin
+        priv_lvl_q <= riscv::PRIV_LVL_M;
+        // floating-point registers
+        fcsr_q     <= '0;
+        if (CVA6Cfg.RVZCMT) begin
+          jvt_q <= '0;
         end
-      end
-      if (CVA6Cfg.RVH) begin
-        v_q                      <= v_d;
-        mtval2_q                 <= mtval2_d;
-        mtinst_q                 <= mtinst_d;
-        // hypervisor mode registers
-        hstatus_q                <= hstatus_d;
-        hedeleg_q                <= hedeleg_d;
-        hideleg_q                <= hideleg_d;
-        hgeie_q                  <= hgeie_d;
-        hgatp_q                  <= hgatp_d;
-        hcounteren_q             <= hcounteren_d;
-        htval_q                  <= htval_d;
-        htinst_q                 <= htinst_d;
-        // virtual supervisor mode registers
-        vsstatus_q               <= vsstatus_d;
-        vsepc_q                  <= vsepc_d;
-        vscause_q                <= vscause_d;
-        vstvec_q                 <= vstvec_d;
-        vsscratch_q              <= vsscratch_d;
-        vstval_q                 <= vstval_d;
-        vsatp_q                  <= vsatp_d;
-        en_ld_st_g_translation_q <= en_ld_st_g_translation_d;
-        if (CVA6Cfg.RVZiCbom) begin
-          hcbie_q  <= hcbie_d;
-          hcbcfe_q <= hcbcfe_d;
+        // debug signals
+        if (CVA6Cfg.DebugEn) begin
+          debug_mode_q <= 1'b0;
+          dcsr_q       <= '{xdebugver: 4'h4, prv: riscv::PRIV_LVL_M, default: '0};
+          dpc_q        <= '0;
+          dscratch0_q  <= {CVA6Cfg.XLEN{1'b0}};
+          dscratch1_q  <= {CVA6Cfg.XLEN{1'b0}};
         end
+        // machine mode registers
+        mstatus_q        <= 64'b0;
+        // set to boot address + direct mode + 4 byte offset which is the initial trap
+        mtvec_rst_load_q <= 1'b1;
+        mtvec_q          <= '0;
+        mip_q            <= {CVA6Cfg.XLEN{1'b0}};
+        mie_q            <= {CVA6Cfg.XLEN{1'b0}};
+        mepc_q           <= {CVA6Cfg.XLEN{1'b0}};
+        mcause_q         <= {CVA6Cfg.XLEN{1'b0}};
+        mcounteren_q     <= {CVA6Cfg.XLEN{1'b0}};
+        mscratch_q       <= {CVA6Cfg.XLEN{1'b0}};
+        if (CVA6Cfg.TvalEn) mtval_q <= {CVA6Cfg.XLEN{1'b0}};
+        fiom_q          <= '0;
+        dcache_q        <= {{CVA6Cfg.XLEN - 1{1'b0}}, 1'b1};
+        icache_q        <= {{CVA6Cfg.XLEN - 1{1'b0}}, 1'b1};
+        mcountinhibit_q <= '0;
+        acc_cons_q      <= {{CVA6Cfg.XLEN - 1{1'b0}}, CVA6Cfg.EnableAccelerator};
+        if (CVA6Cfg.RVZiCbom) begin
+          mcbie_q  <= riscv::CBIE_INVAL;
+          mcbcfe_q <= 1'b1;
+        end
+        // supervisor mode registers
+        if (CVA6Cfg.RVS) begin
+          medeleg_q    <= {CVA6Cfg.XLEN{1'b0}};
+          mideleg_q    <= {CVA6Cfg.XLEN{1'b0}};
+          sepc_q       <= {CVA6Cfg.XLEN{1'b0}};
+          scause_q     <= {CVA6Cfg.XLEN{1'b0}};
+          stvec_q      <= {CVA6Cfg.XLEN{1'b0}};
+          scounteren_q <= {CVA6Cfg.XLEN{1'b0}};
+          sscratch_q   <= {CVA6Cfg.XLEN{1'b0}};
+          stval_q      <= {CVA6Cfg.XLEN{1'b0}};
+          satp_q       <= {CVA6Cfg.XLEN{1'b0}};
+          if (CVA6Cfg.RVZiCbom) begin
+            scbie_q  <= riscv::CBIE_INVAL;
+            scbcfe_q <= 1'b1;
+          end
+        end
+
+        if (CVA6Cfg.RVH) begin
+          v_q                      <= '0;
+          mtval2_q                 <= {CVA6Cfg.XLEN{1'b0}};
+          mtinst_q                 <= {CVA6Cfg.XLEN{1'b0}};
+          hstatus_q                <= 64'b0;
+          hedeleg_q                <= {CVA6Cfg.XLEN{1'b0}};
+          hideleg_q                <= {CVA6Cfg.XLEN{1'b0}};
+          hgeie_q                  <= {CVA6Cfg.XLEN{1'b0}};
+          hgatp_q                  <= {CVA6Cfg.XLEN{1'b0}};
+          hcounteren_q             <= {CVA6Cfg.XLEN{1'b0}};
+          htval_q                  <= {CVA6Cfg.XLEN{1'b0}};
+          htinst_q                 <= {CVA6Cfg.XLEN{1'b0}};
+          // virtual supervisor mode registers
+          vsstatus_q               <= 64'b0;
+          vsepc_q                  <= {CVA6Cfg.XLEN{1'b0}};
+          vscause_q                <= {CVA6Cfg.XLEN{1'b0}};
+          vstvec_q                 <= {CVA6Cfg.XLEN{1'b0}};
+          vsscratch_q              <= {CVA6Cfg.XLEN{1'b0}};
+          vstval_q                 <= {CVA6Cfg.XLEN{1'b0}};
+          vsatp_q                  <= {CVA6Cfg.XLEN{1'b0}};
+          en_ld_st_g_translation_q <= 1'b0;
+          if (CVA6Cfg.RVZiCbom) begin
+            hcbie_q  <= riscv::CBIE_INVAL;
+            hcbcfe_q <= 1'b1;
+          end
+        end
+        if (CVA6Cfg.SDTRIG) begin
+          scontext_q <= '0;
+        end
+        // timer and counters
+        cycle_q                <= 64'b0;
+        instret_q              <= 64'b0;
+        // aux registers
+        en_ld_st_translation_q <= 1'b0;
+        // wait for interrupt
+        wfi_q                  <= 1'b0;
+        // pmp
+        for (int i = 0; i < 64; i++) begin
+          if (i < CVA6Cfg.NrPMPEntries) begin
+            pmpcfg_q[i]  <= riscv::pmpcfg_t'(CVA6Cfg.PMPCfgRstVal[i]);
+            pmpaddr_q[i] <= CVA6Cfg.PMPAddrRstVal[i][CVA6Cfg.PLEN-3:0];
+          end else begin
+            pmpcfg_q[i]  <= '0;
+            pmpaddr_q[i] <= '0;
+          end
+        end
+      end else begin
+        priv_lvl_q <= priv_lvl_d;
+        // floating-point registers
+        fcsr_q     <= fcsr_d;
+        if (CVA6Cfg.RVZCMT) begin
+          jvt_q <= jvt_d;
+        end
+        // debug signals
+        if (CVA6Cfg.DebugEn) begin
+          debug_mode_q <= debug_mode_d;
+          dcsr_q       <= dcsr_d;
+          dpc_q        <= dpc_d;
+          dscratch0_q  <= dscratch0_d;
+          dscratch1_q  <= dscratch1_d;
+        end
+        // machine mode registers
+        mstatus_q        <= mstatus_d;
+        mtvec_rst_load_q <= 1'b0;
+        mtvec_q          <= mtvec_d;
+        mip_q            <= mip_d;
+        mie_q            <= mie_d;
+        mepc_q           <= mepc_d;
+        mcause_q         <= mcause_d;
+        mcounteren_q     <= mcounteren_d;
+        mscratch_q       <= mscratch_d;
+        if (CVA6Cfg.TvalEn) mtval_q <= mtval_d;
+        fiom_q          <= fiom_d;
+        dcache_q        <= dcache_d;
+        icache_q        <= icache_d;
+        mcountinhibit_q <= mcountinhibit_d;
+        acc_cons_q      <= acc_cons_d;
+        if (CVA6Cfg.RVZiCbom) begin
+          mcbie_q  <= mcbie_d;
+          mcbcfe_q <= mcbcfe_d;
+        end
+        // supervisor mode registers
+        if (CVA6Cfg.RVS) begin
+          medeleg_q    <= medeleg_d;
+          mideleg_q    <= mideleg_d;
+          sepc_q       <= sepc_d;
+          scause_q     <= scause_d;
+          stvec_q      <= stvec_d;
+          scounteren_q <= scounteren_d;
+          sscratch_q   <= sscratch_d;
+          if (CVA6Cfg.TvalEn) stval_q <= stval_d;
+          satp_q <= satp_d;
+          if (CVA6Cfg.RVZiCbom) begin
+            scbie_q  <= scbie_d;
+            scbcfe_q <= scbcfe_d;
+          end
+        end
+        if (CVA6Cfg.RVH) begin
+          v_q                      <= v_d;
+          mtval2_q                 <= mtval2_d;
+          mtinst_q                 <= mtinst_d;
+          // hypervisor mode registers
+          hstatus_q                <= hstatus_d;
+          hedeleg_q                <= hedeleg_d;
+          hideleg_q                <= hideleg_d;
+          hgeie_q                  <= hgeie_d;
+          hgatp_q                  <= hgatp_d;
+          hcounteren_q             <= hcounteren_d;
+          htval_q                  <= htval_d;
+          htinst_q                 <= htinst_d;
+          // virtual supervisor mode registers
+          vsstatus_q               <= vsstatus_d;
+          vsepc_q                  <= vsepc_d;
+          vscause_q                <= vscause_d;
+          vstvec_q                 <= vstvec_d;
+          vsscratch_q              <= vsscratch_d;
+          vstval_q                 <= vstval_d;
+          vsatp_q                  <= vsatp_d;
+          en_ld_st_g_translation_q <= en_ld_st_g_translation_d;
+          if (CVA6Cfg.RVZiCbom) begin
+            hcbie_q  <= hcbie_d;
+            hcbcfe_q <= hcbcfe_d;
+          end
+        end
+        if (CVA6Cfg.SDTRIG) begin
+          scontext_q <= scontext_d;
+        end
+        // timer and counters
+        cycle_q                <= cycle_d;
+        instret_q              <= instret_d;
+        // aux registers
+        en_ld_st_translation_q <= en_ld_st_translation_d;
+        // wait for interrupt
+        wfi_q                  <= wfi_d;
+        // pmp
+        pmpcfg_q               <= pmpcfg_next;
+        pmpaddr_q              <= pmpaddr_next;
       end
-      if (CVA6Cfg.SDTRIG) begin
-        scontext_q <= scontext_d;
-      end
-      // timer and counters
-      cycle_q                <= cycle_d;
-      instret_q              <= instret_d;
-      // aux registers
-      en_ld_st_translation_q <= en_ld_st_translation_d;
-      // wait for interrupt
-      wfi_q                  <= wfi_d;
-      // pmp
-      pmpcfg_q               <= pmpcfg_next;
-      pmpaddr_q              <= pmpaddr_next;
     end
   end
 
@@ -2991,6 +3094,7 @@ module csr_regfile
       ) trigger_module_i (
           .clk_i,
           .rst_ni,
+          .clear_i,
           .commit_instr_i       (commit_instr_i),
           .commit_ack_i         (commit_ack_i),
           .ex_i                 (ex_i),

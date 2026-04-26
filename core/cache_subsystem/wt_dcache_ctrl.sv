@@ -25,6 +25,7 @@ module wt_dcache_ctrl
 ) (
     input logic clk_i,  // Clock
     input logic rst_ni,  // Asynchronous reset active low
+    input logic clear_i,  // Synchronous clear active high
     input logic cache_en_i,
     // core request ports
     input dcache_req_i_t req_port_i,
@@ -265,15 +266,27 @@ module wt_dcache_ctrl
       rd_req_q      <= '0;
       rd_ack_q      <= '0;
     end else begin
-      state_q       <= state_d;
-      address_tag_q <= address_tag_d;
-      address_idx_q <= address_idx_d;
-      address_off_q <= address_off_d;
-      id_q          <= id_d;
-      vld_data_q    <= vld_data_d;
-      data_size_q   <= data_size_d;
-      rd_req_q      <= rd_req_d;
-      rd_ack_q      <= rd_ack_d;
+      if (clear_i) begin
+        state_q       <= IDLE;
+        address_tag_q <= '0;
+        address_idx_q <= '0;
+        address_off_q <= '0;
+        id_q          <= '0;
+        vld_data_q    <= '0;
+        data_size_q   <= '0;
+        rd_req_q      <= '0;
+        rd_ack_q      <= '0;
+      end else begin
+        state_q       <= state_d;
+        address_tag_q <= address_tag_d;
+        address_idx_q <= address_idx_d;
+        address_off_q <= address_off_d;
+        id_q          <= id_d;
+        vld_data_q    <= vld_data_d;
+        data_size_q   <= data_size_d;
+        rd_req_q      <= rd_req_d;
+        rd_ack_q      <= rd_ack_d;
+      end
     end
   end
 

@@ -37,6 +37,7 @@ module std_cache_subsystem
 ) (
     input logic clk_i,
     input logic rst_ni,
+    input logic clear_i,
     input riscv::priv_lvl_t priv_lvl_i,
     // I$
     input logic icache_en_i,  // enable icache (or bypass e.g: in debug mode)
@@ -88,6 +89,7 @@ module std_cache_subsystem
   ) i_cva6_icache_axi_wrapper (
       .clk_i     (clk_i),
       .rst_ni    (rst_ni),
+      .clear_i   (clear_i),
       .priv_lvl_i(priv_lvl_i),
       .flush_i   (icache_flush_i),
       .en_i      (icache_en_i),
@@ -115,6 +117,7 @@ module std_cache_subsystem
   ) i_nbdcache (
       .clk_i,
       .rst_ni,
+      .clear_i,
       .enable_i    (dcache_enable_i),
       .flush_i     (dcache_flush_i),
       .flush_ack_o (dcache_flush_ack_o),
@@ -140,12 +143,13 @@ module std_cache_subsystem
 
 
   // AR Channel
-  stream_arbiter #(
+  stream_arbiter_flushable #(
       .DATA_T(axi_ar_chan_t),
       .N_INP (3)
   ) i_stream_arbiter_ar (
       .clk_i,
       .rst_ni,
+      .flush_i    (clear_i),
       .inp_data_i ({axi_req_icache.ar, axi_req_bypass.ar, axi_req_data.ar}),
       .inp_valid_i({axi_req_icache.ar_valid, axi_req_bypass.ar_valid, axi_req_data.ar_valid}),
       .inp_ready_o({axi_resp_icache.ar_ready, axi_resp_bypass.ar_ready, axi_resp_data.ar_ready}),
@@ -155,12 +159,13 @@ module std_cache_subsystem
   );
 
   // AW Channel
-  stream_arbiter #(
+  stream_arbiter_flushable #(
       .DATA_T(axi_aw_chan_t),
       .N_INP (3)
   ) i_stream_arbiter_aw (
       .clk_i,
       .rst_ni,
+      .flush_i    (clear_i),
       .inp_data_i ({axi_req_icache.aw, axi_req_bypass.aw, axi_req_data.aw}),
       .inp_valid_i({axi_req_icache.aw_valid, axi_req_bypass.aw_valid, axi_req_data.aw_valid}),
       .inp_ready_o({axi_resp_icache.aw_ready, axi_resp_bypass.aw_ready, axi_resp_data.aw_ready}),
@@ -190,7 +195,7 @@ module std_cache_subsystem
   ) i_fifo_w_channel (
       .clk_i     (clk_i),
       .rst_ni    (rst_ni),
-      .flush_i   (1'b0),
+      .flush_i   (clear_i),
       .testmode_i(1'b0),
       .full_o    (w_fifo_full),
       .empty_o   (),               // leave open
@@ -206,7 +211,10 @@ module std_cache_subsystem
 
   always_ff @(posedge clk_i or negedge rst_ni) begin : aw_lock_reg
     if (~rst_ni) aw_lock_q <= 1'b0;
-    else aw_lock_q <= aw_lock_d;
+    else begin
+      if (clear_i) aw_lock_q <= 1'b0;
+      else aw_lock_q <= aw_lock_d;
+    end
   end
 
   assign w_fifo_push = ~aw_lock_q & axi_req_o.aw_valid;

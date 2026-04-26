@@ -32,6 +32,8 @@ module id_stage #(
     input logic clk_i,
     // Asynchronous reset active low - SUBSYSTEM
     input logic rst_ni,
+    // Synchronous clear active high - SUBSYSTEM
+    input logic clear_i,
     // Fetch flush request - CONTROLLER
     input logic flush_i,
     // Debug (async) request - SUBSYSTEM
@@ -194,6 +196,7 @@ module id_stage #(
           .is_macro_instr_i          (is_macro_instr[0]),
           .clk_i                     (clk_i),
           .rst_ni                    (rst_ni),
+          .clear_i                   (clear_i),
           .instr_o                   (instruction_zcmp),
           .illegal_instr_i           (is_illegal_rvc[0]),
           .is_compressed_i           (is_compressed_rvc[0]),
@@ -226,6 +229,7 @@ module id_stage #(
           .is_zcmt_instr_i(is_zcmt_instr[0]),
           .clk_i          (clk_i),
           .rst_ni         (rst_ni),
+          .clear_i        (clear_i),
           .instr_o        (instruction_zcmt),
           .illegal_instr_i(is_illegal_rvc[0]),
           .is_compressed_i(is_compressed_rvc[0]),
@@ -474,7 +478,8 @@ module id_stage #(
     if (~rst_ni) begin
       issue_q <= '0;
     end else begin
-      issue_q <= issue_n;
+      if (clear_i) issue_q <= '0;
+      else issue_q <= issue_n;
     end
   end
 

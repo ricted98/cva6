@@ -53,6 +53,8 @@ module instr_queue
     input logic clk_i,
     // Asynchronous reset active low - SUBSYSTEM
     input logic rst_ni,
+    // Synchronous clear active high - SUBSYSTEM
+    input logic clear_i,
     // Fetch flush request - CONTROLLER
     input logic flush_i,
     // Instruction - instr_realign
@@ -468,7 +470,7 @@ module instr_queue
     ) i_fifo_instr_data (
         .clk_i     (clk_i),
         .rst_ni    (rst_ni),
-        .flush_i   (flush_i),
+        .flush_i   (clear_i | flush_i),
         .testmode_i(1'b0),
         .full_o    (instr_queue_full[i]),
         .empty_o   (instr_queue_empty[i]),
@@ -497,7 +499,7 @@ module instr_queue
   ) i_fifo_address (
       .clk_i     (clk_i),
       .rst_ni    (rst_ni),
-      .flush_i   (flush_i),
+      .flush_i   (clear_i | flush_i),
       .testmode_i(1'b0),
       .full_o    (full_address),
       .empty_o   (),
@@ -519,17 +521,24 @@ module instr_queue
         pc_q            <= '0;
         reset_address_q <= 1'b1;
       end else begin
-        pc_q            <= pc_d;
-        reset_address_q <= reset_address_d;
-        if (flush_i) begin
-          // one-hot encoded
+        if (clear_i) begin
           idx_ds_q        <= 'b1;
-          // binary encoded
           idx_is_q        <= '0;
+          pc_q            <= '0;
           reset_address_q <= 1'b1;
         end else begin
-          idx_ds_q <= idx_ds_d;
-          idx_is_q <= idx_is_d;
+          pc_q            <= pc_d;
+          reset_address_q <= reset_address_d;
+          if (flush_i) begin
+            // one-hot encoded
+            idx_ds_q        <= 'b1;
+            // binary encoded
+            idx_is_q        <= '0;
+            reset_address_q <= 1'b1;
+          end else begin
+            idx_ds_q <= idx_ds_d;
+            idx_is_q <= idx_is_d;
+          end
         end
       end
     end
@@ -541,10 +550,15 @@ module instr_queue
         pc_q            <= '0;
         reset_address_q <= 1'b1;
       end else begin
-        pc_q            <= pc_d;
-        reset_address_q <= reset_address_d;
-        if (flush_i) begin
+        if (clear_i) begin
+          pc_q            <= '0;
           reset_address_q <= 1'b1;
+        end else begin
+          pc_q            <= pc_d;
+          reset_address_q <= reset_address_d;
+          if (flush_i) begin
+            reset_address_q <= 1'b1;
+          end
         end
       end
     end

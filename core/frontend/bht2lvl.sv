@@ -17,6 +17,7 @@ module bht2lvl #(
 ) (
     input  logic                                                      clk_i,
     input  logic                                                      rst_ni,
+    input  logic                                                      clear_i,
     input  logic                                                      flush_i,
     input  logic                        [           CVA6Cfg.VLEN-1:0] vpc_i,
     input  bht_update_t                                               bht_update_i,
@@ -118,10 +119,14 @@ module bht2lvl #(
         if (!rst_ni) begin
           bht_q[i][j] <= BHT_RST_VALUE;
         end else begin
-          if (flush_i) begin
+          if (clear_i) begin
             bht_q[i][j] <= BHT_RST_VALUE;
           end else begin
-            bht_q[i][j] <= bht_d[i][j];
+            if (flush_i) begin
+              bht_q[i][j] <= BHT_RST_VALUE;
+            end else begin
+              bht_q[i][j] <= bht_d[i][j];
+            end
           end
         end
       end

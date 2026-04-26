@@ -34,6 +34,7 @@ module acc_dispatcher
 ) (
     input logic clk_i,
     input logic rst_ni,
+    input logic clear_i,
     // Interface with the CSR regfile
     input logic acc_cons_en_i,  // Accelerator memory consistent mode
     output logic acc_fflags_valid_o,
@@ -154,7 +155,7 @@ module acc_dispatcher
   ) i_acc_insn_queue (
       .clk_i     (clk_i),
       .rst_ni    (rst_ni),
-      .flush_i   (flush_ex_i),
+      .flush_i   (clear_i | flush_ex_i),
       .testmode_i(1'b0),
       .data_i    (fu_data_i),
       .push_i    (acc_valid_q),
@@ -174,13 +175,11 @@ module acc_dispatcher
 
   // Keep track of the instructions that were received by the dispatcher.
   logic [CVA6Cfg.NR_SB_ENTRIES-1:0] insn_pending_d, insn_pending_q;
-  `FF(insn_pending_q, insn_pending_d, '0)
 
   // Only non-speculative instructions can be issued to the accelerators.
   // The following block keeps track of which transaction IDs reached the
   // top of the scoreboard, and are therefore no longer speculative.
   logic [CVA6Cfg.NR_SB_ENTRIES-1:0] insn_ready_d, insn_ready_q;
-  `FF(insn_ready_q, insn_ready_d, '0)
 
   always_comb begin : p_non_speculative_ff
     // Maintain state
@@ -334,7 +333,6 @@ module acc_dispatcher
   // before continuing execution), halt execution while there are pending stores in
   // the accelerator pipeline.
   logic wait_acc_store_d, wait_acc_store_q;
-  `FF(wait_acc_store_q, wait_acc_store_d, '0)
 
   // Set on store barrier. Clear when no store is pending.
   assign wait_acc_store_d = (wait_acc_store_q | commit_st_barrier_i) & acc_resp_i.acc_resp.store_pending;
@@ -359,7 +357,7 @@ module acc_dispatcher
   ) i_acc_spec_loads (
       .clk_i     (clk_i),
       .rst_ni    (rst_ni),
-      .clear_i   (flush_ex_i),
+      .clear_i   (clear_i | flush_ex_i),
       .en_i      ((acc_valid_d && issue_instr_i.op == ACCEL_OP_LOAD) ^ acc_ld_disp),
       .load_i    (1'b0),
       .down_i    (acc_ld_disp),
@@ -375,7 +373,7 @@ module acc_dispatcher
   ) i_acc_disp_loads (
       .clk_i     (clk_i),
       .rst_ni    (rst_ni),
-      .clear_i   (1'b0),
+      .clear_i   (clear_i),
       .en_i      (acc_ld_disp ^ acc_resp_i.acc_resp.load_complete),
       .load_i    (1'b0),
       .down_i    (acc_resp_i.acc_resp.load_complete),
@@ -404,7 +402,7 @@ module acc_dispatcher
   ) i_acc_spec_stores (
       .clk_i     (clk_i),
       .rst_ni    (rst_ni),
-      .clear_i   (flush_ex_i),
+      .clear_i   (clear_i | flush_ex_i),
       .en_i      ((acc_valid_d && issue_instr_i.op == ACCEL_OP_STORE) ^ acc_st_disp),
       .load_i    (1'b0),
       .down_i    (acc_st_disp),
@@ -420,7 +418,7 @@ module acc_dispatcher
   ) i_acc_disp_stores (
       .clk_i     (clk_i),
       .rst_ni    (rst_ni),
-      .clear_i   (1'b0),
+      .clear_i   (clear_i),
       .en_i      (acc_st_disp ^ acc_resp_i.acc_resp.store_complete),
       .load_i    (1'b0),
       .down_i    (acc_resp_i.acc_resp.store_complete),
@@ -428,6 +426,27 @@ module acc_dispatcher
       .q_o       (acc_disp_stores_pending),
       .overflow_o(acc_disp_stores_overflow)
   );
+
+  /*********/
+  /* Flops */
+  /*********/
+  always_ff @(posedge clk_i, negedge rst_ni) begin
+    if (~rst_ni) begin
+      insn_pending_q <= '0;
+      insn_ready_q <= '0;
+      wait_acc_store_q <= '0;
+    end else begin
+      if (clear_i) begin
+        insn_pending_q <= '0;
+        insn_ready_q <= '0;
+        wait_acc_store_q <= '0;
+      end else begin
+        insn_pending_q <= insn_pending_d;
+        insn_ready_q <= insn_ready_d;
+        wait_acc_store_q <= wait_acc_store_d;
+      end
+    end
+  end
 
   acc_dispatcher_no_store_overflow :
   assert property (

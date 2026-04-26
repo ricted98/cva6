@@ -24,6 +24,8 @@ module multiplier
     input  logic                             clk_i,
     // Asynchronous reset active low - SUBSYSTEM
     input  logic                             rst_ni,
+    // Synchronous clear active high - SUBSYSTEM
+    input  logic                             clear_i,
     // Multiplier transaction ID - Mult
     input  logic [CVA6Cfg.TRANS_ID_BITS-1:0] trans_id_i,
     // Multiplier instruction is valid - Mult
@@ -140,8 +142,13 @@ module multiplier
         clmul_q  <= '0;
         clmulr_q <= '0;
       end else begin
-        clmul_q  <= clmul_d;
-        clmulr_q <= clmulr_d;
+        if (clear_i) begin
+          clmul_q  <= '0;
+          clmulr_q <= '0;
+        end else begin
+          clmul_q  <= clmul_d;
+          clmulr_q <= clmulr_d;
+        end
       end
     end
   end else begin
@@ -158,12 +165,19 @@ module multiplier
       operator_q    <= MUL;
       mult_result_q <= '0;
     end else begin
-      // Input silencing
-      trans_id_q    <= trans_id_i;
-      // Output Register
-      mult_valid_q  <= mult_valid;
-      operator_q    <= operator_d;
-      mult_result_q <= mult_result_d;
+      if (clear_i) begin
+        mult_valid_q  <= '0;
+        trans_id_q    <= '0;
+        operator_q    <= MUL;
+        mult_result_q <= '0;
+      end else begin
+        // Input silencing
+        trans_id_q    <= trans_id_i;
+        // Output Register
+        mult_valid_q  <= mult_valid;
+        operator_q    <= operator_d;
+        mult_result_q <= mult_result_d;
+      end
     end
   end
 endmodule

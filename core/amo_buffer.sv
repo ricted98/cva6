@@ -19,6 +19,7 @@ module amo_buffer #(
 ) (
     input logic clk_i,   // Clock
     input logic rst_ni,  // Asynchronous reset active low
+    input logic clear_i,  // Synchronous clear active high
     input logic flush_i, // pipeline flush
 
     input logic valid_i,  // AMO is valid
@@ -69,7 +70,7 @@ module amo_buffer #(
   ) i_amo_fifo (
       .clk_i     (clk_i),
       .rst_ni    (rst_ni),
-      .flush_i   (flush_amo_buffer),
+      .flush_i   (clear_i | flush_amo_buffer),
       .testmode_i(1'b0),
       .full_o    (amo_valid),
       .empty_o   (ready_o),

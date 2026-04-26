@@ -31,6 +31,7 @@ module wt_axi_adapter
 ) (
     input logic clk_i,
     input logic rst_ni,
+    input logic clear_i,
 
     // icache
     input  logic         icache_data_req_i,
@@ -127,7 +128,7 @@ module wt_axi_adapter
   ) i_rr_arb_tree (
       .clk_i  (clk_i),
       .rst_ni (rst_ni),
-      .flush_i('0),
+      .flush_i(clear_i),
       .rr_i   ('0),
       .req_i  (arb_req),
       .gnt_o  (arb_ack),
@@ -377,7 +378,7 @@ module wt_axi_adapter
   ) i_icache_data_fifo (
       .clk_i     (clk_i),
       .rst_ni    (rst_ni),
-      .flush_i   (1'b0),
+      .flush_i   (clear_i),
       .testmode_i(1'b0),
       .full_o    (icache_data_full),
       .empty_o   (icache_data_empty),
@@ -396,7 +397,7 @@ module wt_axi_adapter
   ) i_dcache_data_fifo (
       .clk_i     (clk_i),
       .rst_ni    (rst_ni),
-      .flush_i   (1'b0),
+      .flush_i   (clear_i),
       .testmode_i(1'b0),
       .full_o    (dcache_data_full),
       .empty_o   (dcache_data_empty),
@@ -421,7 +422,7 @@ module wt_axi_adapter
   ) i_rd_icache_id (
       .clk_i     (clk_i),
       .rst_ni    (rst_ni),
-      .flush_i   (1'b0),
+      .flush_i   (clear_i),
       .testmode_i(1'b0),
       .full_o    (icache_rd_full),
       .empty_o   (icache_rd_empty),
@@ -439,7 +440,7 @@ module wt_axi_adapter
   ) i_rd_dcache_id (
       .clk_i     (clk_i),
       .rst_ni    (rst_ni),
-      .flush_i   (1'b0),
+      .flush_i   (clear_i),
       .testmode_i(1'b0),
       .full_o    (dcache_rd_full),
       .empty_o   (dcache_rd_empty),
@@ -457,7 +458,7 @@ module wt_axi_adapter
   ) i_wr_dcache_id (
       .clk_i     (clk_i),
       .rst_ni    (rst_ni),
-      .flush_i   (1'b0),
+      .flush_i   (clear_i),
       .testmode_i(1'b0),
       .full_o    (dcache_wr_full),
       .empty_o   (dcache_wr_empty),
@@ -488,7 +489,7 @@ module wt_axi_adapter
   ) i_b_fifo (
       .clk_i     (clk_i),
       .rst_ni    (rst_ni),
-      .flush_i   (1'b0),
+      .flush_i   (clear_i),
       .testmode_i(1'b0),
       .full_o    (b_full),
       .empty_o   (b_empty),
@@ -708,20 +709,37 @@ module wt_axi_adapter
       amo_off_q              <= '0;
       amo_gen_r_q            <= 1'b0;
     end else begin
-      icache_first_q         <= icache_first_d;
-      dcache_first_q         <= dcache_first_d;
-      icache_rd_shift_q      <= icache_rd_shift_d;
-      icache_rd_shift_user_q <= icache_rd_shift_user_d;
-      dcache_rd_shift_q      <= dcache_rd_shift_d;
-      dcache_rd_shift_user_q <= dcache_rd_shift_user_d;
-      icache_rtrn_vld_q      <= icache_rtrn_vld_d;
-      dcache_rtrn_vld_q      <= dcache_rtrn_vld_d;
-      icache_rtrn_tid_q      <= icache_rtrn_tid_d;
-      dcache_rtrn_tid_q      <= dcache_rtrn_tid_d;
-      dcache_rtrn_type_q     <= dcache_rtrn_type_d;
-      dcache_rtrn_inv_q      <= dcache_rtrn_inv_d;
-      amo_off_q              <= amo_off_d;
-      amo_gen_r_q            <= amo_gen_r_d;
+      if (clear_i) begin
+        icache_first_q         <= 1'b1;
+        dcache_first_q         <= 1'b1;
+        icache_rd_shift_q      <= '0;
+        icache_rd_shift_user_q <= '0;
+        dcache_rd_shift_q      <= '0;
+        dcache_rd_shift_user_q <= '0;
+        icache_rtrn_vld_q      <= '0;
+        dcache_rtrn_vld_q      <= '0;
+        icache_rtrn_tid_q      <= '0;
+        dcache_rtrn_tid_q      <= '0;
+        dcache_rtrn_type_q     <= wt_cache_pkg::DCACHE_LOAD_ACK;
+        dcache_rtrn_inv_q      <= '0;
+        amo_off_q              <= '0;
+        amo_gen_r_q            <= 1'b0;
+      end else begin
+        icache_first_q         <= icache_first_d;
+        dcache_first_q         <= dcache_first_d;
+        icache_rd_shift_q      <= icache_rd_shift_d;
+        icache_rd_shift_user_q <= icache_rd_shift_user_d;
+        dcache_rd_shift_q      <= dcache_rd_shift_d;
+        dcache_rd_shift_user_q <= dcache_rd_shift_user_d;
+        icache_rtrn_vld_q      <= icache_rtrn_vld_d;
+        dcache_rtrn_vld_q      <= dcache_rtrn_vld_d;
+        icache_rtrn_tid_q      <= icache_rtrn_tid_d;
+        dcache_rtrn_tid_q      <= dcache_rtrn_tid_d;
+        dcache_rtrn_type_q     <= dcache_rtrn_type_d;
+        dcache_rtrn_inv_q      <= dcache_rtrn_inv_d;
+        amo_off_q              <= amo_off_d;
+        amo_gen_r_q            <= amo_gen_r_d;
+      end
     end
   end
 
@@ -738,6 +756,7 @@ module wt_axi_adapter
   ) i_axi_shim (
       .clk_i      (clk_i),
       .rst_ni     (rst_ni),
+      .clear_i    (clear_i),
       .rd_req_i   (axi_rd_req),
       .rd_gnt_o   (axi_rd_gnt),
       .rd_addr_i  (axi_rd_addr),

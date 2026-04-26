@@ -30,6 +30,7 @@ module cva6_shared_tlb #(
 ) (
     input logic clk_i,  // Clock
     input logic rst_ni,  // Asynchronous reset active low
+    input logic clear_i,  // Syynchronous clear active high
     input logic flush_i,  // Flush normal translations signal
     input logic flush_vvma_i,  // Flush vs stage signal
     input logic flush_gvma_i,  // Flush g stage signal
@@ -374,18 +375,31 @@ module cva6_shared_tlb #(
       i_req_q <= 0;
       shared_tag_valid <= '0;
     end else begin
-      itlb_vpn_q <= itlb_vaddr_i[CVA6Cfg.SV-1:12];
-      dtlb_vpn_q <= dtlb_vaddr_i[CVA6Cfg.SV-1:12];
-      tlb_update_asid_q <= tlb_update_asid_d;
-      shared_tlb_access_q <= shared_tlb_access_d;
-      shared_tlb_vaddr_q <= shared_tlb_vaddr_d;
-      shared_tag_valid_q <= shared_tag_valid_d;
-      vpn_q <= vpn_d;
-      itlb_req_q <= itlb_req_d;
-      dtlb_req_q <= dtlb_req_d;
-      i_req_q <= i_req_d;
-      shared_tag_valid <= shared_tag_valid_q[tag_rd_addr];
-
+      if (clear_i) begin
+        itlb_vpn_q <= '0;
+        dtlb_vpn_q <= '0;
+        tlb_update_asid_q <= '{default: 0};
+        shared_tlb_access_q <= '0;
+        shared_tlb_vaddr_q <= '0;
+        shared_tag_valid_q <= '0;
+        vpn_q <= 0;
+        itlb_req_q <= '0;
+        dtlb_req_q <= '0;
+        i_req_q <= 0;
+        shared_tag_valid <= '0;
+      end else begin
+        itlb_vpn_q <= itlb_vaddr_i[CVA6Cfg.SV-1:12];
+        dtlb_vpn_q <= dtlb_vaddr_i[CVA6Cfg.SV-1:12];
+        tlb_update_asid_q <= tlb_update_asid_d;
+        shared_tlb_access_q <= shared_tlb_access_d;
+        shared_tlb_vaddr_q <= shared_tlb_vaddr_d;
+        shared_tag_valid_q <= shared_tag_valid_d;
+        vpn_q <= vpn_d;
+        itlb_req_q <= itlb_req_d;
+        dtlb_req_q <= dtlb_req_d;
+        i_req_q <= i_req_d;
+        shared_tag_valid <= shared_tag_valid_q[tag_rd_addr];
+      end
     end
   end
 
@@ -394,7 +408,8 @@ module cva6_shared_tlb #(
       if (~rst_ni) begin
         tlb_update_vmid_q <= '{default: 0};
       end else begin
-        tlb_update_vmid_q <= tlb_update_vmid_d;
+        if (clear_i) tlb_update_vmid_q <= '{default: 0};
+        else tlb_update_vmid_q <= tlb_update_vmid_d;
       end
     end
   end

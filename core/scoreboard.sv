@@ -25,6 +25,8 @@ module scoreboard #(
     input  logic                                          clk_i,
     // Asynchronous reset active low - SUBSYSTEM
     input  logic                                          rst_ni,
+    // Synchronous clear active high - SUBSYSTEM
+    input  logic                                          clear_i,
     // Is scoreboard full - PERF_COUNTERS
     output logic                                          sb_full_o,
     // Prevent from issuing - CONTROLLER
@@ -307,10 +309,16 @@ module scoreboard #(
       commit_pointer_q <= '0;
       issue_pointer_q  <= '0;
     end else begin
-      issue_pointer_q <= issue_pointer_n;
-      mem_q <= mem_n;
-      mem_q[x_id_i].sbe.rd <= (x_transaction_accepted_i && ~x_issue_writeback_i) ? 5'b0 : mem_n[x_id_i].sbe.rd;
-      commit_pointer_q <= commit_pointer_n;
+      if (clear_i) begin
+        mem_q            <= '{default: sb_mem_t'(0)};
+        commit_pointer_q <= '0;
+        issue_pointer_q  <= '0;
+      end else begin
+        issue_pointer_q <= issue_pointer_n;
+        mem_q <= mem_n;
+        mem_q[x_id_i].sbe.rd <= (x_transaction_accepted_i && ~x_issue_writeback_i) ? 5'b0 : mem_n[x_id_i].sbe.rd;
+        commit_pointer_q <= commit_pointer_n;
+      end
     end
   end
 

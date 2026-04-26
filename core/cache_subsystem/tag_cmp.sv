@@ -24,6 +24,7 @@ module tag_cmp #(
 ) (
     input logic clk_i,
     input logic rst_ni,
+    input logic clear_i,
 
     input logic [NR_PORTS-1:0][CVA6Cfg.DCACHE_SET_ASSOC-1:0] req_i,
     output logic [NR_PORTS-1:0] gnt_o,
@@ -99,7 +100,8 @@ module tag_cmp #(
     if (~rst_ni) begin
       id_q <= 0;
     end else begin
-      id_q <= id_d;
+      if (clear_i) id_q <= 0;
+      else id_q <= id_d;
     end
   end
 
