@@ -374,6 +374,7 @@ module cva6_hpdcache_wrapper
   ) i_hpdcache (
       .clk_i,
       .rst_ni,
+      .clear_i,
 
       .wbuf_flush_i(dcache_flush_i),
 
