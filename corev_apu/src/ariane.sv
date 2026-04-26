@@ -105,7 +105,11 @@ module ariane import ariane_pkg::*; #(
     .cvxif_req_o          ( cvxif_req                 ),
     .cvxif_resp_i         ( cvxif_resp                ),
     .noc_req_o            ( noc_req_o                 ),
-    .noc_resp_i           ( noc_resp_i                )
+    .noc_resp_i           ( noc_resp_i                ),
+    .dcache_ext_sram_req_o  (                         ),
+    .dcache_ext_sram_resp_i ( '0                      ),
+    .icache_sram_req_o  (                         ),
+    .icache_sram_resp_i ( '0                      )
   );
 
   if (CVA6Cfg.CvxifEn) begin: gen_cvxif
