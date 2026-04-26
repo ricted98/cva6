@@ -36,7 +36,12 @@ module cva6_hpdcache_subsystem
     parameter type noc_req_t = logic,
     parameter type noc_resp_t = logic,
     parameter type cmo_req_t = logic,
-    parameter type cmo_rsp_t = logic
+    parameter type cmo_rsp_t = logic,
+    parameter type dcache_ext_sram_req_t = logic,
+    parameter type dcache_ext_sram_resp_t = logic,
+    // I$ SRAM types
+    parameter type icache_sram_req_t = logic,
+    parameter type icache_sram_resp_t = logic
 )
 //  }}}
 
@@ -124,18 +129,22 @@ module cva6_hpdcache_subsystem
     // TO_BE_COMPLETED - TO_BE_COMPLETED
     output logic [NrHwPrefetchers-1:0][63:0] hwpf_throttle_o,
     // TO_BE_COMPLETED - TO_BE_COMPLETED
-    output logic [               63:0]       hwpf_status_o
+    output logic [               63:0]       hwpf_status_o,
+    //  }}}
+
+    //  External D$ SRAM interface
+    //  {{{
+    output dcache_ext_sram_req_t  dcache_ext_sram_req_o,
+    input  dcache_ext_sram_resp_t dcache_ext_sram_resp_i,
+    //  }}}
+
+    //  External I$ SRAM interface
+    //  {{{
+    output icache_sram_req_t  icache_sram_req_o,
+    input  icache_sram_resp_t icache_sram_resp_i
     //  }}}
 );
   //  }}}
-
-  function int unsigned __minu(int unsigned x, int unsigned y);
-    return x < y ? x : y;
-  endfunction
-
-  function int unsigned __maxu(int unsigned x, int unsigned y);
-    return y < x ? x : y;
-  endfunction
 
   //  I$ instantiation
   //  {{{
@@ -155,22 +164,27 @@ module cva6_hpdcache_subsystem
       .icache_drsp_t(icache_drsp_t),
       .icache_req_t(icache_req_t),
       .icache_rtrn_t(icache_rtrn_t),
-      .RdTxId(ICACHE_RDTXID)
+      .RdTxId(ICACHE_RDTXID),
+      .ExternalSram(CVA6Cfg.ExternalSram),
+      .icache_sram_req_t(icache_sram_req_t),
+      .icache_sram_resp_t(icache_sram_resp_t)
   ) i_cva6_icache (
-      .clk_i         (clk_i),
-      .rst_ni        (rst_ni),
-      .flush_i       (icache_flush_i),
-      .en_i          (icache_en_i),
-      .miss_o        (icache_miss_o),
-      .areq_i        (icache_areq_i),
-      .areq_o        (icache_areq_o),
-      .dreq_i        (icache_dreq_i),
-      .dreq_o        (icache_dreq_o),
-      .mem_rtrn_vld_i(icache_miss_resp_valid),
-      .mem_rtrn_i    (icache_miss_resp),
-      .mem_data_req_o(icache_miss_valid),
-      .mem_data_ack_i(icache_miss_ready),
-      .mem_data_o    (icache_miss)
+      .clk_i             (clk_i),
+      .rst_ni            (rst_ni),
+      .flush_i           (icache_flush_i),
+      .en_i              (icache_en_i),
+      .miss_o            (icache_miss_o),
+      .areq_i            (icache_areq_i),
+      .areq_o            (icache_areq_o),
+      .dreq_i            (icache_dreq_i),
+      .dreq_o            (icache_dreq_o),
+      .mem_rtrn_vld_i    (icache_miss_resp_valid),
+      .mem_rtrn_i        (icache_miss_resp),
+      .mem_data_req_o    (icache_miss_valid),
+      .mem_data_ack_i    (icache_miss_ready),
+      .mem_data_o        (icache_miss),
+      .icache_sram_req_o (icache_sram_req_o),
+      .icache_sram_resp_i(icache_sram_resp_i)
   );
   //  }}}
 
@@ -178,65 +192,9 @@ module cva6_hpdcache_subsystem
   //  {{{
   `include "hpdcache_typedef.svh"
 
-  //    0: Page-Table Walk (PTW)
-  //    1: Load unit
-  //    2: Accelerator load
-  //    3: Store/AMO
-  //    .
-  //    .
-  //    .
-  //    NumPorts: CMO
-  //    NumPorts + 1: Hardware Memory Prefetcher (hwpf)
-  localparam int HPDCACHE_NREQUESTERS = NumPorts + 2;
-
-  function automatic hpdcache_pkg::hpdcache_user_cfg_t hpdcacheSetConfig();
-    hpdcache_pkg::hpdcache_user_cfg_t userCfg;
-    userCfg.nRequesters = HPDCACHE_NREQUESTERS;
-    userCfg.paWidth = CVA6Cfg.PLEN;
-    userCfg.wordWidth = CVA6Cfg.XLEN;
-    userCfg.sets = CVA6Cfg.DCACHE_NUM_WORDS;
-    userCfg.ways = CVA6Cfg.DCACHE_SET_ASSOC;
-    userCfg.clWords = CVA6Cfg.DCACHE_LINE_WIDTH / CVA6Cfg.XLEN;
-    userCfg.reqWords = 1;
-    userCfg.reqTransIdWidth = CVA6Cfg.DcacheIdWidth;
-    userCfg.reqSrcIdWidth = 3;  // Up to 8 requesters
-    userCfg.victimSel = hpdcache_pkg::HPDCACHE_VICTIM_RANDOM;
-    userCfg.dataWaysPerRamWord = __minu(CVA6Cfg.DCACHE_SET_ASSOC, 128 / CVA6Cfg.XLEN);
-    userCfg.dataSetsPerRam = CVA6Cfg.DCACHE_NUM_WORDS;
-    userCfg.dataRamByteEnable = 1'b1;
-    userCfg.accessWords = __maxu(CVA6Cfg.AxiDataWidth / CVA6Cfg.XLEN, userCfg.reqWords);
-    userCfg.mshrSets = CVA6Cfg.NrLoadBufEntries < 16 ? 1 : CVA6Cfg.NrLoadBufEntries / 2;
-    userCfg.mshrWays = CVA6Cfg.NrLoadBufEntries < 16 ? CVA6Cfg.NrLoadBufEntries : 2;
-    userCfg.mshrWaysPerRamWord = CVA6Cfg.NrLoadBufEntries < 16 ? CVA6Cfg.NrLoadBufEntries : 2;
-    userCfg.mshrSetsPerRam = CVA6Cfg.NrLoadBufEntries < 16 ? 1 : CVA6Cfg.NrLoadBufEntries / 2;
-    userCfg.mshrRamByteEnable = 1'b1;
-    userCfg.mshrUseRegbank = (CVA6Cfg.NrLoadBufEntries < 16);
-    userCfg.refillCoreRspFeedthrough = 1'b1;
-    userCfg.refillFifoDepth = 2 * (CVA6Cfg.DCACHE_LINE_WIDTH / CVA6Cfg.AxiDataWidth);
-    userCfg.wbufDirEntries = CVA6Cfg.WtDcacheWbufDepth;
-    userCfg.wbufDataEntries = CVA6Cfg.WtDcacheWbufDepth;
-    userCfg.wbufWords = 1;
-    userCfg.wbufTimecntWidth = 3;
-    userCfg.rtabEntries = 4;
-    /*FIXME we should add additional CVA6 config parameters (flushEntries)*/
-    userCfg.flushEntries = CVA6Cfg.WtDcacheWbufDepth;
-    /*FIXME we should add additional CVA6 config parameters (flushFifoDepth)*/
-    userCfg.flushFifoDepth = CVA6Cfg.WtDcacheWbufDepth;
-    userCfg.memAddrWidth = CVA6Cfg.AxiAddrWidth;
-    userCfg.memIdWidth = CVA6Cfg.MEM_TID_WIDTH;
-    userCfg.memDataWidth = CVA6Cfg.AxiDataWidth;
-    userCfg.wtEn =
-        (CVA6Cfg.DCacheType == config_pkg::HPDCACHE_WT) ||
-        (CVA6Cfg.DCacheType == config_pkg::HPDCACHE_WT_WB);
-    userCfg.wbEn =
-        (CVA6Cfg.DCacheType == config_pkg::HPDCACHE_WB) ||
-        (CVA6Cfg.DCacheType == config_pkg::HPDCACHE_WT_WB);
-    return userCfg;
-  endfunction
-
-  localparam hpdcache_pkg::hpdcache_user_cfg_t HPDcacheUserCfg = hpdcacheSetConfig();
-  localparam hpdcache_pkg::hpdcache_cfg_t HPDcacheCfg = hpdcache_pkg::hpdcacheBuildConfig(
-      HPDcacheUserCfg
+  localparam hpdcache_pkg::hpdcache_cfg_t HPDcacheCfg =
+      cva6_hpdcache_subsystem_pkg::hpdcacheBuildCfg(
+      CVA6Cfg, NumPorts
   );
 
   `HPDCACHE_TYPEDEF_MEM_ATTR_T(hpdcache_mem_addr_t, hpdcache_mem_id_t, hpdcache_mem_data_t,
@@ -304,7 +262,9 @@ module cva6_hpdcache_subsystem
       .hpdcache_req_t(hpdcache_req_t),
       .hpdcache_rsp_t(hpdcache_rsp_t),
       .hpdcache_wbuf_timecnt_t(hpdcache_wbuf_timecnt_t),
-      .hpdcache_data_be_t(hpdcache_data_be_t)
+      .hpdcache_data_be_t(hpdcache_data_be_t),
+      .dcache_ext_sram_req_t(dcache_ext_sram_req_t),
+      .dcache_ext_sram_resp_t(dcache_ext_sram_resp_t)
   ) i_dcache (
       .clk_i(clk_i),
       .rst_ni(rst_ni),
@@ -349,7 +309,10 @@ module cva6_hpdcache_subsystem
 
       .dcache_mem_resp_write_ready_o(dcache_write_resp_ready),
       .dcache_mem_resp_write_valid_i(dcache_write_resp_valid),
-      .dcache_mem_resp_write_i(dcache_write_resp)
+      .dcache_mem_resp_write_i(dcache_write_resp),
+
+      .dcache_ext_sram_req_o (dcache_ext_sram_req_o),
+      .dcache_ext_sram_resp_i(dcache_ext_sram_resp_i)
   );
 
   //  AXI arbiter instantiation

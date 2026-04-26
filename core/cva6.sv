@@ -14,6 +14,7 @@
 
 `include "rvfi_types.svh"
 `include "cvxif_types.svh"
+`include "hpdcache_typedef.svh"
 
 module cva6
   import ariane_pkg::*;
@@ -314,7 +315,29 @@ module cva6
     parameter type cvxif_req_t =
     `CVXIF_REQ_T(CVA6Cfg, x_compressed_req_t, x_issue_req_t, x_register_t, x_commit_t),
     parameter type cvxif_resp_t =
-    `CVXIF_RESP_T(CVA6Cfg, x_compressed_resp_t, x_issue_resp_t, x_result_t)
+    `CVXIF_RESP_T(CVA6Cfg, x_compressed_resp_t, x_issue_resp_t, x_result_t),
+    // D$ external SRAM types
+    parameter type dcache_ext_sram_req_t = logic,
+    parameter type dcache_ext_sram_resp_t = logic,
+    // I$ SRAM types (computed from CVA6Cfg)
+    localparam int unsigned IcacheOffsetWidth = $clog2(CVA6Cfg.ICACHE_LINE_WIDTH / 8),
+    localparam int unsigned IcacheClIdxWidth = CVA6Cfg.ICACHE_INDEX_WIDTH - IcacheOffsetWidth,
+    localparam type icache_sram_req_t = struct packed {
+      logic [CVA6Cfg.ICACHE_SET_ASSOC-1:0]                             tag_req;
+      logic                                                            tag_we;
+      logic [IcacheClIdxWidth-1:0]                                     tag_addr;
+      logic [CVA6Cfg.ICACHE_SET_ASSOC-1:0][CVA6Cfg.ICACHE_TAG_WIDTH:0] tag_wdata;
+      logic [CVA6Cfg.ICACHE_SET_ASSOC-1:0]                             data_req;
+      logic                                                            data_we;
+      logic [IcacheClIdxWidth-1:0]                                     data_addr;
+      logic [CVA6Cfg.ICACHE_LINE_WIDTH-1:0]                            data_wdata;
+      logic [CVA6Cfg.ICACHE_USER_LINE_WIDTH-1:0]                       data_wuser;
+    },
+    localparam type icache_sram_resp_t = struct packed {
+      logic [CVA6Cfg.ICACHE_SET_ASSOC-1:0][CVA6Cfg.ICACHE_TAG_WIDTH:0]         tag_rdata;
+      logic [CVA6Cfg.ICACHE_SET_ASSOC-1:0][CVA6Cfg.ICACHE_LINE_WIDTH-1:0]      data_rdata;
+      logic [CVA6Cfg.ICACHE_SET_ASSOC-1:0][CVA6Cfg.ICACHE_USER_LINE_WIDTH-1:0] data_ruser;
+    }
 ) (
     // Subsystem Clock - SUBSYSTEM
     input logic clk_i,
@@ -341,7 +364,15 @@ module cva6
     // noc request, can be AXI or OpenPiton - SUBSYSTEM
     output noc_req_t noc_req_o,
     // noc response, can be AXI or OpenPiton - SUBSYSTEM
-    input noc_resp_t noc_resp_i
+    input noc_resp_t noc_resp_i,
+    // External D$ SRAM interface for HPDcache - SUBSYSTEM
+    output dcache_ext_sram_req_t dcache_ext_sram_req_o,
+    // External D$ SRAM interface for HPDcache - SUBSYSTEM
+    input dcache_ext_sram_resp_t dcache_ext_sram_resp_i,
+    // External I$ SRAM interface - SUBSYSTEM
+    output icache_sram_req_t icache_sram_req_o,
+    // External I$ SRAM interface - SUBSYSTEM
+    input icache_sram_resp_t icache_sram_resp_i
 );
 
   localparam type interrupts_t = struct packed {
@@ -1443,6 +1474,8 @@ module cva6
         .inval_valid_i     (inval_valid),
         .inval_ready_o     (inval_ready)
     );
+    assign dcache_ext_sram_req_o = '0;
+    assign icache_sram_req_o = '0;
   end else if (
         CVA6Cfg.DCacheType == config_pkg::HPDCACHE_WT ||
         CVA6Cfg.DCacheType == config_pkg::HPDCACHE_WB ||
@@ -1468,7 +1501,11 @@ module cva6
         .noc_req_t (noc_req_t),
         .noc_resp_t(noc_resp_t),
         .cmo_req_t (logic  /*FIXME*/),
-        .cmo_rsp_t (logic  /*FIXME*/)
+        .cmo_rsp_t (logic  /*FIXME*/),
+        .dcache_ext_sram_req_t(dcache_ext_sram_req_t),
+        .dcache_ext_sram_resp_t(dcache_ext_sram_resp_t),
+        .icache_sram_req_t(icache_sram_req_t),
+        .icache_sram_resp_t(icache_sram_resp_t)
     ) i_cache_subsystem (
         .clk_i (clk_i),
         .rst_ni(rst_ni),
@@ -1510,7 +1547,13 @@ module cva6
         .hwpf_status_o      (  /*FIXME*/),
 
         .noc_req_o (noc_req_o),
-        .noc_resp_i(noc_resp_i)
+        .noc_resp_i(noc_resp_i),
+
+        .dcache_ext_sram_req_o (dcache_ext_sram_req_o),
+        .dcache_ext_sram_resp_i(dcache_ext_sram_resp_i),
+
+        .icache_sram_req_o (icache_sram_req_o),
+        .icache_sram_resp_i(icache_sram_resp_i)
     );
     assign inval_ready   = 1'b1;
     assign miss_vld_bits = '0;
@@ -1567,6 +1610,8 @@ module cva6
     assign dcache_commit_wbuffer_not_ni = 1'b1;
     assign inval_ready                  = 1'b1;
     assign miss_vld_bits                = '0;
+    assign dcache_ext_sram_req_o        = '0;
+    assign icache_sram_req_o            = '0;
   end
 
   // ----------------

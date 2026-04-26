@@ -54,6 +54,7 @@ localparam config_pkg::cva6_user_cfg_t cva6_cfg = '{
    FpgaEn: bit'(0),  // for Xilinx and Altera
    FpgaAlteraEn: bit'(0),  // for Altera (only)
    TechnoCut: bit'(0),
+   ExternalSram: bit'(0),
    SuperscalarEn: bit'(0),
    ALUBypass: bit'(0),
    NrCommitPorts: unsigned'(2),

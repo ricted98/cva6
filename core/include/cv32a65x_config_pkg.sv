@@ -24,6 +24,7 @@ package cva6_config_pkg;
       FpgaEn: bit'(0),
       FpgaAlteraEn: bit'(0),
       TechnoCut: bit'(1),
+      ExternalSram: bit'(0),
       SuperscalarEn: bit'(1),
       ALUBypass: bit'(1),
       NrCommitPorts: unsigned'(1),
