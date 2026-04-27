@@ -142,8 +142,8 @@ module cva6_hpdcache_subsystem
 
     //  External I$ SRAM interface
     //  {{{
-    output icache_sram_req_t  icache_sram_req_o,
-    input  icache_sram_resp_t icache_sram_resp_i
+    output icache_sram_req_t  icache_ext_sram_req_o,
+    input  icache_sram_resp_t icache_ext_sram_resp_i
     //  }}}
 );
   //  }}}
@@ -171,23 +171,23 @@ module cva6_hpdcache_subsystem
       .icache_sram_req_t(icache_sram_req_t),
       .icache_sram_resp_t(icache_sram_resp_t)
   ) i_cva6_icache (
-      .clk_i         (clk_i),
-      .rst_ni        (rst_ni),
-      .clear_i       (clear_i),
-      .flush_i       (icache_flush_i),
-      .en_i          (icache_en_i),
-      .miss_o        (icache_miss_o),
-      .areq_i        (icache_areq_i),
-      .areq_o        (icache_areq_o),
-      .dreq_i        (icache_dreq_i),
-      .dreq_o        (icache_dreq_o),
-      .mem_rtrn_vld_i(icache_miss_resp_valid),
-      .mem_rtrn_i    (icache_miss_resp),
-      .mem_data_req_o(icache_miss_valid),
-      .mem_data_ack_i(icache_miss_ready),
-      .mem_data_o    (icache_miss),
-      .icache_sram_req_o (icache_sram_req_o),
-      .icache_sram_resp_i(icache_sram_resp_i)
+      .clk_i                 (clk_i),
+      .rst_ni                (rst_ni),
+      .clear_i               (clear_i),
+      .flush_i               (icache_flush_i),
+      .en_i                  (icache_en_i),
+      .miss_o                (icache_miss_o),
+      .areq_i                (icache_areq_i),
+      .areq_o                (icache_areq_o),
+      .dreq_i                (icache_dreq_i),
+      .dreq_o                (icache_dreq_o),
+      .mem_rtrn_vld_i        (icache_miss_resp_valid),
+      .mem_rtrn_i            (icache_miss_resp),
+      .mem_data_req_o        (icache_miss_valid),
+      .mem_data_ack_i        (icache_miss_ready),
+      .mem_data_o            (icache_miss),
+      .icache_ext_sram_req_o (icache_ext_sram_req_o),
+      .icache_ext_sram_resp_i(icache_ext_sram_resp_i)
   );
   //  }}}
 
