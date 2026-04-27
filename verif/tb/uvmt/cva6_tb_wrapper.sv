@@ -122,8 +122,8 @@ module cva6_tb_wrapper import uvmt_cva6_pkg::*; #(
     .noc_resp_i           ( axi_ariane_resp              ),
     .dcache_ext_sram_req_o  (                            ),
     .dcache_ext_sram_resp_i ( '0                         ),
-    .icache_sram_req_o  (                            ),
-    .icache_sram_resp_i ( '0                         )
+    .icache_ext_sram_req_o  (                            ),
+    .icache_ext_sram_resp_i ( '0                         )
   );
 
   //----------------------------------------------------------------------------

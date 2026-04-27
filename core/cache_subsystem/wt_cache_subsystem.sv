@@ -125,23 +125,23 @@ module wt_cache_subsystem
       .icache_rtrn_t(icache_rtrn_t),
       .RdTxId(0)
   ) i_cva6_icache (
-      .clk_i         (clk_i),
-      .rst_ni        (rst_ni),
-      .clear_i       (clear_i),
-      .flush_i       (icache_flush_i),
-      .en_i          (icache_en_i),
-      .miss_o        (icache_miss_o),
-      .areq_i        (icache_areq_i),
-      .areq_o        (icache_areq_o),
-      .dreq_i        (icache_dreq_i),
-      .dreq_o        (icache_dreq_o),
-      .mem_rtrn_vld_i(adapter_icache_rtrn_vld),
-      .mem_rtrn_i    (adapter_icache),
-      .mem_data_req_o(icache_adapter_data_req),
-      .mem_data_ack_i(adapter_icache_data_ack),
-      .mem_data_o    (icache_adapter),
-      .icache_sram_req_o (),
-      .icache_sram_resp_i('0)
+      .clk_i                 (clk_i),
+      .rst_ni                (rst_ni),
+      .clear_i               (clear_i),
+      .flush_i               (icache_flush_i),
+      .en_i                  (icache_en_i),
+      .miss_o                (icache_miss_o),
+      .areq_i                (icache_areq_i),
+      .areq_o                (icache_areq_o),
+      .dreq_i                (icache_dreq_i),
+      .dreq_o                (icache_dreq_o),
+      .mem_rtrn_vld_i        (adapter_icache_rtrn_vld),
+      .mem_rtrn_i            (adapter_icache),
+      .mem_data_req_o        (icache_adapter_data_req),
+      .mem_data_ack_i        (adapter_icache_data_ack),
+      .mem_data_o            (icache_adapter),
+      .icache_ext_sram_req_o (),
+      .icache_ext_sram_resp_i('0)
   );
 
 

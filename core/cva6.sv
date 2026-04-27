@@ -372,9 +372,9 @@ module cva6
     // External D$ SRAM interface for HPDcache - SUBSYSTEM
     input dcache_ext_sram_resp_t dcache_ext_sram_resp_i,
     // External I$ SRAM interface - SUBSYSTEM
-    output icache_sram_req_t icache_sram_req_o,
+    output icache_sram_req_t icache_ext_sram_req_o,
     // External I$ SRAM interface - SUBSYSTEM
-    input icache_sram_resp_t icache_sram_resp_i
+    input icache_sram_resp_t icache_ext_sram_resp_i
 );
 
   localparam type interrupts_t = struct packed {
@@ -1485,7 +1485,7 @@ module cva6
         .inval_ready_o     (inval_ready)
     );
     assign dcache_ext_sram_req_o = '0;
-    assign icache_sram_req_o = '0;
+    assign icache_ext_sram_req_o = '0;
   end else if (
         CVA6Cfg.DCacheType == config_pkg::HPDCACHE_WT ||
         CVA6Cfg.DCacheType == config_pkg::HPDCACHE_WB ||
@@ -1563,8 +1563,8 @@ module cva6
         .dcache_ext_sram_req_o (dcache_ext_sram_req_o),
         .dcache_ext_sram_resp_i(dcache_ext_sram_resp_i),
 
-        .icache_sram_req_o (icache_sram_req_o),
-        .icache_sram_resp_i(icache_sram_resp_i)
+        .icache_ext_sram_req_o (icache_ext_sram_req_o),
+        .icache_ext_sram_resp_i(icache_ext_sram_resp_i)
     );
     assign inval_ready   = 1'b1;
     assign miss_vld_bits = '0;
@@ -1623,7 +1623,7 @@ module cva6
     assign inval_ready                  = 1'b1;
     assign miss_vld_bits                = '0;
     assign dcache_ext_sram_req_o        = '0;
-    assign icache_sram_req_o            = '0;
+    assign icache_ext_sram_req_o        = '0;
   end
 
   // ----------------

@@ -66,8 +66,8 @@ module cva6_icache
     input  logic              mem_data_ack_i,
     output icache_req_t       mem_data_o,
     // External SRAM interface
-    output icache_sram_req_t  icache_sram_req_o,
-    input  icache_sram_resp_t icache_sram_resp_i
+    output icache_sram_req_t  icache_ext_sram_req_o,
+    input  icache_sram_resp_t icache_ext_sram_resp_i
 );
 
   localparam ICACHE_OFFSET_WIDTH = $clog2(CVA6Cfg.ICACHE_LINE_WIDTH / 8);
@@ -492,10 +492,10 @@ module cva6_icache
 
   if (ExternalSram) begin : gen_ext_sram
     // Route packed struct to external ports
-    assign icache_sram_req_o = sram_req;
-    assign sram_resp = icache_sram_resp_i;
+    assign icache_ext_sram_req_o = sram_req;
+    assign sram_resp = icache_ext_sram_resp_i;
   end else begin : gen_int_sram
-    assign icache_sram_req_o = '0;
+    assign icache_ext_sram_req_o = '0;
     // Instantiate local icache_memwrap
     icache_memwrap #(
         .CVA6Cfg           (CVA6Cfg),

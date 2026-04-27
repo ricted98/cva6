@@ -109,8 +109,8 @@ module ariane import ariane_pkg::*; #(
     .noc_resp_i           ( noc_resp_i                ),
     .dcache_ext_sram_req_o  (                         ),
     .dcache_ext_sram_resp_i ( '0                      ),
-    .icache_sram_req_o  (                         ),
-    .icache_sram_resp_i ( '0                      )
+    .icache_ext_sram_req_o  (                         ),
+    .icache_ext_sram_resp_i ( '0                      )
   );
 
   if (CVA6Cfg.CvxifEn) begin: gen_cvxif
