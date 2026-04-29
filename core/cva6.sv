@@ -1517,8 +1517,8 @@ module cva6
         .icache_sram_req_t(icache_sram_req_t),
         .icache_sram_resp_t(icache_sram_resp_t)
     ) i_cache_subsystem (
-        .clk_i (clk_i),
-        .rst_ni(rst_ni),
+        .clk_i  (clk_i),
+        .rst_ni (rst_ni),
         .clear_i(clear_i),
 
         .icache_en_i   (icache_en_csr),

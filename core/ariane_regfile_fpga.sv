@@ -114,12 +114,10 @@ module ariane_regfile_fpga #(
   for (genvar j = 0; j < CVA6Cfg.NrCommitPorts; j++) begin : regfile_ram_block
     always_ff @(posedge clk_i) begin
       if (clear_i) begin
-        for (int k = 0; k < NUM_WORDS; k++)
-          mem[j][k] <= '0;
+        for (int k = 0; k < NUM_WORDS; k++) mem[j][k] <= '0;
         wdata_reg[j] <= '0;
         if (CVA6Cfg.FpgaAlteraEn) begin
-          for (int k = 0; k < NR_READ_PORTS; k++)
-            mem_read_sync[j][k] <= '0;
+          for (int k = 0; k < NR_READ_PORTS; k++) mem_read_sync[j][k] <= '0;
           read_after_write <= '0;
         end
       end else begin

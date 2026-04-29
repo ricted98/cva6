@@ -76,10 +76,8 @@ module ras #(
     if (~rst_ni) begin
       stack_q <= '0;
     end else begin
-      if (clear_i)
-        stack_q <= '0;
-      else
-        stack_q <= stack_d;
+      if (clear_i) stack_q <= '0;
+      else stack_q <= stack_d;
     end
   end
 endmodule

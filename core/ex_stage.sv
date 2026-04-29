@@ -718,10 +718,10 @@ module ex_stage
             vaddr_to_be_flushed  <= '0;
             gpaddr_to_be_flushed <= '0;
           end else if ((~(current_instruction_is_sfence_vma || current_instruction_is_hfence_vvma || current_instruction_is_hfence_gvma)) && (~((fu_data_i[0].operation == SFENCE_VMA || fu_data_i[0].operation == HFENCE_VVMA || fu_data_i[0].operation == HFENCE_GVMA ) && |csr_valid_i))) begin
-              vaddr_to_be_flushed  <= rs1_forwarding;
-              gpaddr_to_be_flushed <= {rs1_forwarding[CVA6Cfg.GPLEN-3:0], 2'b00};
-              asid_to_be_flushed   <= rs2_forwarding[CVA6Cfg.ASID_WIDTH-1:0];
-              vmid_to_be_flushed   <= rs2_forwarding[CVA6Cfg.VMID_WIDTH-1:0];
+            vaddr_to_be_flushed  <= rs1_forwarding;
+            gpaddr_to_be_flushed <= {rs1_forwarding[CVA6Cfg.GPLEN-3:0], 2'b00};
+            asid_to_be_flushed   <= rs2_forwarding[CVA6Cfg.ASID_WIDTH-1:0];
+            vmid_to_be_flushed   <= rs2_forwarding[CVA6Cfg.VMID_WIDTH-1:0];
           end
         end
       end

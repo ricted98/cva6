@@ -304,8 +304,8 @@ module cva6_mmu
       .dcache_req_o_t   (dcache_req_o_t),
       .HYP_EXT          (HYP_EXT)
   ) i_ptw (
-      .clk_i (clk_i),
-      .rst_ni(rst_ni),
+      .clk_i  (clk_i),
+      .rst_ni (rst_ni),
       .clear_i(clear_i),
       .flush_i,
 

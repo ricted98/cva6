@@ -196,7 +196,9 @@ module cva6_hpdcache_subsystem
   `include "hpdcache_typedef.svh"
 
   localparam hpdcache_pkg::hpdcache_cfg_t HPDcacheCfg =
-      cva6_hpdcache_subsystem_pkg::hpdcacheBuildCfg(CVA6Cfg, NumPorts);
+      cva6_hpdcache_subsystem_pkg::hpdcacheBuildCfg(
+      CVA6Cfg, NumPorts
+  );
 
   `HPDCACHE_TYPEDEF_MEM_ATTR_T(hpdcache_mem_addr_t, hpdcache_mem_id_t, hpdcache_mem_data_t,
                                hpdcache_mem_be_t, HPDcacheCfg);
