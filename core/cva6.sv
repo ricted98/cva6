@@ -1449,6 +1449,8 @@ module cva6
         CVA6Cfg.DCacheType == config_pkg::HPDCACHE_WT_WB
   )
   begin : gen_cache_hpd
+    amo_req_t  amo_req_masked;
+    amo_resp_t amo_resp_precut;
     cva6_hpdcache_subsystem #(
         .CVA6Cfg   (CVA6Cfg),
         .icache_areq_t(icache_areq_t),
@@ -1486,8 +1488,8 @@ module cva6
         .dcache_flush_ack_o(dcache_flush_ack_cache_ctrl),
         .dcache_miss_o     (dcache_miss_cache_perf),
 
-        .dcache_amo_req_i (amo_req),
-        .dcache_amo_resp_o(amo_resp),
+        .dcache_amo_req_i (amo_req_masked),
+        .dcache_amo_resp_o(amo_resp_precut),
 
         .dcache_cmo_req_i ('0  /*FIXME*/),
         .dcache_cmo_resp_o(  /*FIXME*/),
@@ -1512,8 +1514,24 @@ module cva6
         .noc_req_o (noc_req_o),
         .noc_resp_i(noc_resp_i)
     );
-    assign inval_ready   = 1'b1;
+    assign inval_ready = 1'b1;
     assign miss_vld_bits = '0;
+
+    always_comb begin
+      amo_req_masked = amo_req;
+      amo_req_masked.req = amo_req.req & ~amo_resp.ack;
+    end
+
+    shift_reg #(
+        .dtype(amo_resp_t),
+        .Depth(1)
+    ) i_amo_resp_cut (
+        .clk_i,
+        .rst_ni,
+        .d_i  (amo_resp_precut),
+        .d_o  (amo_resp)
+    );
+
   end else begin : gen_cache_wb
     std_cache_subsystem #(
         // note: this only works with one cacheable region
