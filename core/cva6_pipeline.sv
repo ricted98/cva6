@@ -1323,6 +1323,7 @@ module cva6_pipeline
       .we_fpr(we_fpr_commit_id),
       .commit_instr(commit_instr_id_commit),
       .commit_ack(commit_ack),
+      .commit_drop(commit_drop_id_commit),
       .st_valid(ex_stage_i.lsu_i.i_store_unit.store_buffer_i.valid_i),
       .st_paddr(ex_stage_i.lsu_i.i_store_unit.store_buffer_i.paddr_i),
       .ld_valid(ex_stage_i.lsu_i.i_load_unit.ypb_load_req_o.preq),
