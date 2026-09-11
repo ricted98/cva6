@@ -35,7 +35,7 @@ module instr_tracer #(
   input logic [CVA6Cfg.NrIssuePorts-1:0]               issue_ack, // issue acknowledged
   input scoreboard_entry_t [CVA6Cfg.NrIssuePorts-1:0]  issue_sbe, // issue scoreboard entry
   input logic [CVA6Cfg.NrCommitPorts-1:0][4:0]         waddr, // WB stage
-  input logic [CVA6Cfg.NrCommitPorts-1:0][63:0]        wdata,
+  input logic [CVA6Cfg.NrCommitPorts-1:0][CVA6Cfg.XLEN-1:0] wdata,
   input logic [CVA6Cfg.NrCommitPorts-1:0]              we_gpr,
   input logic [CVA6Cfg.NrCommitPorts-1:0]              we_fpr,
   input scoreboard_entry_t [CVA6Cfg.NrCommitPorts-1:0] commit_instr, // commit instruction
