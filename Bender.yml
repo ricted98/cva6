@@ -1,5 +1,5 @@
 package:
-  name: ariane
+  name: cva6
   authors:
     - "Florian Zaruba <zarubaf@iis.ee.ethz.ch>"
     - "Michael Schaffner <schaffner@iis.ee.ethz.ch>"
@@ -7,12 +7,25 @@ package:
 
 # WT_DCACHE
 dependencies:
-  axi: { git: "https://github.com/pulp-platform/axi.git", version: 0.31.0 }
+  axi:
+    git: "https://github.com/pulp-platform/axi.git"
+    version: 0.39.8
   common_cells:
-    { git: "https://github.com/pulp-platform/common_cells", version: 1.23.0 }
-  fpnew: { git: "https://github.com/openhwgroup/cvfpu.git", rev: 58ca3c3 }
+    git: "https://github.com/pulp-platform/common_cells"
+    version: 1.38.0
+  fpnew:
+    git: "https://github.com/openhwgroup/cvfpu.git"
+    rev: 58ca3c3
   tech_cells_generic:
-    { git: "https://github.com/pulp-platform/tech_cells_generic.git", version: 0.2.13 }
+    git: "https://github.com/pulp-platform/tech_cells_generic.git"
+    version: 0.2.14
+  obi:
+    git: "https://github.com/pulp-platform/obi.git"
+    version: 0.1.7
+  hpdcache:
+    git: "https://github.com/openhwgroup/cv-hpdcache.git"
+    rev: c5d2419
+    pass_targets: ["hpdcache_axi"]
 
 export_include_dirs:
   - core/include
@@ -23,37 +36,39 @@ sources:
     files:
       - core/include/config_pkg.sv
       # Pick the right configuration by passing the right bender flag.
-      - target: cv64a6_imafdcv_sv39
+      # Only the HPDcache-based configurations are exposed: the wt_* / std_*
+      # cache subsystems the other config packages select are deprecated.
+      - target: cv32a60x_no_zcmt
         files:
-          - core/include/cv64a6_imafdcv_sv39_config_pkg.sv
+          - core/include/cv32a60x_no_zcmt_config_pkg.sv
 
-      - target: cv64a6_imafdc_sv39
+      - target: cv32a60x_no_zcmt_axi
         files:
-          - core/include/cv64a6_imafdc_sv39_config_pkg.sv
+          - core/include/cv32a60x_no_zcmt_axi_config_pkg.sv
 
-      - target: cv64a6_imafdc_sv39_wb
+      - target: cv32a65x_noPMP_noSuperScalar
         files:
-          - core/include/cv64a6_imafdc_sv39_wb_config_pkg.sv
+          - core/include/cv32a65x_noPMP_noSuperScalar_config_pkg.sv
 
-      - target: cv64a6_imafdch_sv39
+      - target: cv32a65x_noPMP_noSuperScalar_axi
         files:
-          - core/include/cv64a6_imafdch_sv39_config_pkg.sv
+          - core/include/cv32a65x_noPMP_noSuperScalar_axi_config_pkg.sv
 
-      - target: cv64a6_imafdch_sv39_wb
+      - target: cv32a6_ima_sv32_fpga
         files:
-          - core/include/cv64a6_imafdch_sv39_wb_config_pkg.sv
+          - core/include/cv32a6_ima_sv32_fpga_config_pkg.sv
 
-      - target: cv32a6_imac_sv0
+      - target: cv64a6_imafdc_sv39_hpdcache
         files:
-          - core/include/cv32a6_imac_sv0_config_pkg.sv
+          - core/include/cv64a6_imafdc_sv39_hpdcache_config_pkg.sv
 
-      - target: cv32a6_imac_sv32
+      - target: cv64a6_imafdc_sv39_hpdcache_wb
         files:
-          - core/include/cv32a6_imac_sv32_config_pkg.sv
+          - core/include/cv64a6_imafdc_sv39_hpdcache_wb_config_pkg.sv
 
-      - target: cv32a6_imafc_sv32
+      - target: cv64a6_imafdc_sv39_hpdcache_obi
         files:
-          - core/include/cv32a6_imafc_sv32_config_pkg.sv
+          - core/include/cv64a6_imafdc_sv39_hpdcache_obi_config_pkg.sv
 
       # General config infrastructure
       - core/include/riscv_pkg.sv
@@ -65,32 +80,42 @@ sources:
           - core/cva6_accel_first_pass_decoder_stub.sv
 
       # MMU
-      - target: any(cv64a6_imafdcv_sv39, cv64a6_imafdc_sv39, cv64a6_imafdc_sv39_wb, cv64a6_imafdch_sv39, cv64a6_imafdch_sv39_wb, cv32a6_imac_sv0, cv32a6_imac_sv32, cv32a6_imafc_sv32)
-        files:
-          - core/cva6_mmu/cva6_tlb.sv
-          - core/cva6_mmu/cva6_mmu.sv
-          - core/cva6_mmu/cva6_ptw.sv
+      - core/cva6_mmu/cva6_tlb.sv
+      - core/cva6_mmu/cva6_shared_tlb.sv
+      - core/cva6_mmu/cva6_mmu.sv
+      - core/cva6_mmu/cva6_ptw.sv
 
       # Packages
-      - core/include/wt_cache_pkg.sv
-      - core/include/std_cache_pkg.sv
+      - core/include/aes_pkg.sv
 
       # Extension Interface
       - core/cvxif_example/include/cvxif_instr_pkg.sv
+      - core/cvxif_compressed_if_driver.sv
+      - core/cvxif_issue_register_commit_if_driver.sv
       - core/cvxif_fu.sv
       - core/cvxif_example/cvxif_example_coprocessor.sv
       - core/cvxif_example/instr_decoder.sv
+      - core/cvxif_example/compressed_instr_decoder.sv
+      - core/cvxif_example/copro_alu.sv
 
       # Tracing
       - core/cva6_rvfi_probes.sv
+      - core/cva6_rvfi.sv
       - core/cva6_fifo_v3.sv
       # Top-level source files (not necessarily instantiated at the top of the cva6).
+      - core/cva6_example_obi.sv
+      - core/cva6_example_axi.sv
+      - core/cva6_top.sv
       - core/cva6.sv
+      - core/cva6_pipeline.sv
       - core/alu.sv
+      - core/aes.sv
       - core/fpu_wrap.sv # depends on fpnew_pkg, above
       - core/branch_unit.sv
       - core/compressed_decoder.sv
+      - core/macro_decoder.sv
       - core/controller.sv
+      - core/zcmt_decoder.sv
       - core/csr_buffer.sv
       - core/csr_regfile.sv
       - core/decoder.sv
@@ -114,6 +139,7 @@ sources:
       - core/store_unit.sv
       - core/commit_stage.sv
       - core/axi_shim.sv
+      - core/acc_dispatcher.sv
 
       # Frontend (i.e., fetch, decode, dispatch)
       - core/frontend/btb.sv
@@ -123,25 +149,31 @@ sources:
       - core/frontend/instr_queue.sv
       - core/frontend/frontend.sv
       # Cache subsystem(s)
-      - core/cache_subsystem/wt_dcache_ctrl.sv
-      - core/cache_subsystem/wt_dcache_mem.sv
-      - core/cache_subsystem/wt_dcache_missunit.sv
-      - core/cache_subsystem/wt_dcache_wbuffer.sv
-      - core/cache_subsystem/wt_dcache.sv
-      - core/cache_subsystem/wt_cache_subsystem.sv
-      - core/cache_subsystem/wt_axi_adapter.sv
-      - core/cache_subsystem/cva6_icache.sv
-      - core/cache_subsystem/tag_cmp.sv
-      - core/cache_subsystem/cva6_icache_axi_wrapper.sv
-      - core/cache_subsystem/axi_adapter.sv
-      - core/cache_subsystem/miss_handler.sv
-      - core/cache_subsystem/cache_ctrl.sv
-      - core/cache_subsystem/std_nbdcache.sv
-      - core/cache_subsystem/std_cache_subsystem.sv
+      # NOTE: the write-through (wt_*) and write-back (std_*) cache subsystems are
+      # deprecated and deliberately not listed here. HPDcache is the supported one.
+
+      # OBI adapter
+      - core/cache_subsystem/cva6_obi_adapter_subsystem.sv
+
+      # HPDcache / HPIcache subsystem
+      - core/cache_subsystem/cva6_hpdcache_subsystem.sv
+      - core/cache_subsystem/cva6_hpdcache_subsystem_axi_arbiter.sv
+      - core/cache_subsystem/cva6_hpdcache_if_adapter.sv
+      - core/cache_subsystem/cva6_hpdcache_wrapper.sv
+      - core/cache_subsystem/cva6_hpicache_if_adapter.sv
+      - core/cache_subsystem/cva6_hpicache_wrapper.sv
 
       # Physical Memory Protection
       - core/pmp/src/pmp.sv
       - core/pmp/src/pmp_entry.sv
+      - core/pmp/src/pmp_data_if.sv
+
+      # DCLS
+      - core/dcls_comparator.sv
+      - core/dcls_logic.sv
+      - core/dcls_common.sv
+      - core/dcls_common_regfile.sv
+      - core/dcls_common_bht.sv
 
       - include_dirs:
         - common/local/util
