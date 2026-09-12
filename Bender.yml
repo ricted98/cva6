@@ -5,7 +5,6 @@ package:
     - "Michael Schaffner <schaffner@iis.ee.ethz.ch>"
     - "Andreas Kuster <kustera@ethz.ch>"
 
-# WT_DCACHE
 dependencies:
   axi:
     git: "https://github.com/pulp-platform/axi.git"
